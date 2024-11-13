@@ -11,10 +11,3 @@ jobs:
     timeout-minutes: 3
     steps:
       - uses: step-security/assign-author@main
-
-  addLabelsByBranch:
-    name: PR Labeler
-    runs-on: ubuntu-latest
-    timeout-minutes: 3
-    steps:
-      - uses: technote-space/pr-labeler-action@v4
