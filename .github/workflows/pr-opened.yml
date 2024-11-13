@@ -10,4 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
-      - uses: step-security/assign-author@main
+      - name: Harden Runner
+        uses: step-security/harden-runner@91182cccc01eb5e619899d80e4e971d6181294a7 # v2.10.1
+        with:
+          egress-policy: audit
+
+      - uses: step-security/assign-author@172c40c0e4003f78b4e8df61b4382ffcf3fa3c31 # main
