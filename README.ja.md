@@ -7,7 +7,7 @@
 
 *Read this in other languages: [English](README.md), [日本語](README.ja.md).*
 
-`GitHub Actions` to assign author to issue or PR.  
+Issue や Pull Request に Author をアサインする GitHub Actions です。
 
 ## Table of Contents
 
@@ -16,17 +16,20 @@
 <details>
 <summary>Details</summary>
 
-- [Screenshot](#screenshot)
-- [Installation](#installation)
-- [Action event details](#action-event-details)
-  - [Target events](#target-events)
+- [スクリーンショット](#%E3%82%B9%E3%82%AF%E3%83%AA%E3%83%BC%E3%83%B3%E3%82%B7%E3%83%A7%E3%83%83%E3%83%88)
+- [インストール](#%E3%82%A4%E3%83%B3%E3%82%B9%E3%83%88%E3%83%BC%E3%83%AB)
+- [Action イベント詳細](#action-%E3%82%A4%E3%83%99%E3%83%B3%E3%83%88%E8%A9%B3%E7%B4%B0)
+  - [対象イベント](#%E5%AF%BE%E8%B1%A1%E3%82%A4%E3%83%99%E3%83%B3%E3%83%88)
 - [Author](#author)
 
 </details>
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-## Installation
-1. Setup workflow  
+## スクリーンショット
+![GitHub Action](https://raw.githubusercontent.com/step-security/assign-author/images/screenshot.gif)
+
+## インストール
+1. workflow を設定  
    e.g. `.github/workflows/pull_request.yml`
    ```yaml
    on:
@@ -56,8 +59,8 @@
            uses: step-security/assign-author@v1
    ```
 
-## Action event details
-### Target events
+## Action イベント詳細
+### 対象イベント
 | eventName | action |
 |:---:|:---:|
 |pull_request, pull_request_target|opened, reopened|
