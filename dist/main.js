@@ -108649,7 +108649,7 @@ async function validateSubscription() {
         await axios$1.get(API_URL, { timeout: 3000 });
     }
     catch (error) {
-        if (isAxiosError(error) && error.response) {
+        if (isAxiosError(error) && error.response?.status === 403) {
             coreExports.error('Subscription is not valid. Reach out to support@stepsecurity.io');
             process.exit(1);
         }
