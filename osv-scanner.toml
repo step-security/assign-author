@@ -21,3 +21,7 @@ reason = "It is only used for testing"
 [[IgnoredVulns]]
 id = "GHSA-jqfw-vq24-v9c3"
 reason = "It is only used for testing"
+
+[[IgnoredVulns]]
+id = "GHSA-93m4-6634-74q7"
+reason = "It is only used for testing"
