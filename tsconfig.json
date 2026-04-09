@@ -2,10 +2,10 @@
   "extends": "@sindresorhus/tsconfig",
   "compilerOptions": {
     "outDir": "dist",
-    "target": "ES2021",
+    "target": "ES2022",
     "module": "ES2020",
     "lib": [
-      "ES2021"
+      "ES2022"
     ],
     "moduleResolution": "node",
     "noPropertyAccessFromIndexSignature": false,
