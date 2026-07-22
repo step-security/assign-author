@@ -4,16 +4,16 @@ var require$$1 = require('fs');
 var require$$0$1 = require('os');
 var require$$0$2 = require('crypto');
 var require$$1$8 = require('path');
-var require$$2$1 = require('http');
-var require$$3$1 = require('https');
-var require$$0$a = require('net');
+var http$5 = require('http');
+var https$4 = require('https');
+var require$$0$9 = require('net');
 var require$$1$2 = require('tls');
 var require$$4$1 = require('events');
 var require$$5$4 = require('assert');
 var require$$1$1 = require('util');
 var require$$0$3 = require('node:assert');
 var require$$0$5 = require('node:net');
-var require$$2$2 = require('node:http');
+var require$$2$1 = require('node:http');
 var require$$0$4 = require('node:stream');
 var require$$0$6 = require('node:buffer');
 var require$$0$7 = require('node:util');
@@ -30,11 +30,11 @@ var require$$5$2 = require('node:async_hooks');
 var require$$1$6 = require('node:console');
 var require$$1$7 = require('node:dns');
 var require$$5$3 = require('string_decoder');
-var require$$2$3 = require('child_process');
+var require$$2$2 = require('child_process');
 var require$$6 = require('timers');
 var stream$2 = require('stream');
 var require$$5$5 = require('url');
-var require$$0$9 = require('tty');
+var require$$1$9 = require('tty');
 var http2$1 = require('http2');
 var zlib = require('zlib');
 
@@ -69,10 +69,7 @@ function getAugmentedNamespace(n) {
 	if (typeof f == "function") {
 		var a = function a () {
 			if (this instanceof a) {
-				var args = [null];
-				args.push.apply(args, arguments);
-				var Ctor = Function.bind.apply(f, args);
-				return new Ctor();
+        return Reflect.construct(f, arguments, this.constructor);
 			}
 			return f.apply(this, arguments);
 		};
@@ -436,8 +433,8 @@ class DecodedURL extends URL {
 var tunnel$2 = {};
 
 var tls$1 = require$$1$2;
-var http$4 = require$$2$1;
-var https$3 = require$$3$1;
+var http$4 = http$5;
+var https$3 = https$4;
 var events$2 = require$$4$1;
 var util$r = require$$1$1;
 
@@ -1462,7 +1459,7 @@ var tree_1 = {
 
 const assert$f = require$$0$3;
 const { kDestroyed: kDestroyed$2, kBodyUsed: kBodyUsed$1, kListeners, kBody: kBody$2 } = symbols$4;
-const { IncomingMessage } = require$$2$2;
+const { IncomingMessage } = require$$2$1;
 const stream$1 = require$$0$4;
 const net$2 = require$$0$5;
 const { Blob: Blob$1 } = require$$0$6;
@@ -11192,7 +11189,7 @@ var redirectInterceptor = createRedirectInterceptor$3;
 
 const assert$9 = require$$0$3;
 const net = require$$0$5;
-const http$3 = require$$2$2;
+const http$3 = require$$2$1;
 const util$j = util$q;
 const { channels } = diagnostics;
 const Request = request$3;
@@ -14934,7 +14931,7 @@ const {
   kGetNetConnect: kGetNetConnect$1
 } = mockSymbols;
 const { buildURL: buildURL$2 } = util$q;
-const { STATUS_CODES } = require$$2$2;
+const { STATUS_CODES } = require$$2$1;
 const {
   types: {
     isPromise
@@ -18936,7 +18933,7 @@ function requireFetch () {
 	const { dataURLProcessor, serializeAMimeType, minimizeSupportedMimeType } = requireDataUrl();
 	const { getGlobalDispatcher } = global$1;
 	const { webidl } = requireWebidl();
-	const { STATUS_CODES } = require$$2$2;
+	const { STATUS_CODES } = require$$2$1;
 	const GET_OR_HEAD = ['GET', 'HEAD'];
 
 	const defaultUserAgent = typeof __UNDICI_IS_NODE__ !== 'undefined' || typeof esbuildDetection !== 'undefined'
@@ -27877,8 +27874,8 @@ Object.defineProperty(lib, "__esModule", { value: true });
 lib.HttpClient = lib.HttpClientResponse = lib.HttpClientError = lib.MediaTypes = lib.Headers = lib.HttpCodes = void 0;
 lib.getProxyUrl = getProxyUrl;
 lib.isHttps = isHttps$1;
-const http$2 = __importStar$2(require$$2$1);
-const https$2 = __importStar$2(require$$3$1);
+const http$2 = __importStar$2(http$5);
+const https$2 = __importStar$2(https$4);
 const pm = __importStar$2(proxy);
 const tunnel = __importStar$2(tunnel$1);
 const undici_1$1 = undici;
@@ -29720,7 +29717,7 @@ function requireToolrunner () {
 	toolrunner.argStringToArray = argStringToArray;
 	const os = __importStar(require$$0$1);
 	const events = __importStar(require$$4$1);
-	const child = __importStar(require$$2$3);
+	const child = __importStar(require$$2$2);
 	const path = __importStar(require$$1$8);
 	const io = __importStar(requireIo());
 	const ioUtil = __importStar(requireIoUtil());
@@ -37421,7 +37418,19 @@ function redactConfig(config, redactKeys) {
 let AxiosError$1 = class AxiosError extends Error {
   static from(error, code, config, request, response, customProps) {
     const axiosError = new AxiosError(error.message, code || error.code, config, request, response);
-    axiosError.cause = error;
+    // Match native `Error` `cause` semantics: non-enumerable. The wrapped
+    // error often carries circular internals (sockets, requests, agents), so
+    // an enumerable `cause` makes structured loggers (pino/winston) and any
+    // own-property walk throw "Converting circular structure to JSON".
+    // Regression from #6982; see #7205. `__proto__: null` mirrors the
+    // `message` descriptor below (prototype-pollution-safe descriptor).
+    Object.defineProperty(axiosError, 'cause', {
+      __proto__: null,
+      value: error,
+      writable: true,
+      enumerable: false,
+      configurable: true,
+    });
     axiosError.name = error.name;
 
     // Preserve status from the original error if not already set from response
@@ -49198,10 +49207,10 @@ var sign$1 = function sign(number) {
 };
 
 /** @type {import('./gOPD')} */
-var gOPD$1 = Object.getOwnPropertyDescriptor;
+var gOPD = Object.getOwnPropertyDescriptor;
 
 /** @type {import('.')} */
-var $gOPD$1 = gOPD$1;
+var $gOPD$1 = gOPD;
 
 if ($gOPD$1) {
 	try {
@@ -49212,7 +49221,7 @@ if ($gOPD$1) {
 	}
 }
 
-var gopd$1 = $gOPD$1;
+var gopd = $gOPD$1;
 
 /** @type {import('.')} */
 var $defineProperty$2 = Object.defineProperty || false;
@@ -49227,16 +49236,16 @@ if ($defineProperty$2) {
 
 var esDefineProperty = $defineProperty$2;
 
-var shams$2;
-var hasRequiredShams$2;
+var shams$1;
+var hasRequiredShams$1;
 
-function requireShams$2 () {
-	if (hasRequiredShams$2) return shams$2;
-	hasRequiredShams$2 = 1;
+function requireShams$1 () {
+	if (hasRequiredShams$1) return shams$1;
+	hasRequiredShams$1 = 1;
 
 	/** @type {import('./shams')} */
 	/* eslint complexity: [2, 18], max-statements: [2, 33] */
-	shams$2 = function hasSymbols() {
+	shams$1 = function hasSymbols() {
 		if (typeof Symbol !== 'function' || typeof Object.getOwnPropertySymbols !== 'function') { return false; }
 		if (typeof Symbol.iterator === 'symbol') { return true; }
 
@@ -49277,7 +49286,7 @@ function requireShams$2 () {
 
 		return true;
 	};
-	return shams$2;
+	return shams$1;
 }
 
 var hasSymbols$1;
@@ -49288,7 +49297,7 @@ function requireHasSymbols () {
 	hasRequiredHasSymbols = 1;
 
 	var origSymbol = typeof Symbol !== 'undefined' && Symbol;
-	var hasSymbolSham = requireShams$2();
+	var hasSymbolSham = requireShams$1();
 
 	/** @type {import('.')} */
 	hasSymbols$1 = function hasNativeSymbols() {
@@ -49492,41 +49501,6 @@ function requireCallBindApplyHelpers () {
 	return callBindApplyHelpers;
 }
 
-var gOPD;
-var hasRequiredGOPD;
-
-function requireGOPD () {
-	if (hasRequiredGOPD) return gOPD;
-	hasRequiredGOPD = 1;
-
-	/** @type {import('./gOPD')} */
-	gOPD = Object.getOwnPropertyDescriptor;
-	return gOPD;
-}
-
-var gopd;
-var hasRequiredGopd;
-
-function requireGopd () {
-	if (hasRequiredGopd) return gopd;
-	hasRequiredGopd = 1;
-
-	/** @type {import('.')} */
-	var $gOPD = requireGOPD();
-
-	if ($gOPD) {
-		try {
-			$gOPD([], 'length');
-		} catch (e) {
-			// IE 8 has a broken gOPD
-			$gOPD = null;
-		}
-	}
-
-	gopd = $gOPD;
-	return gopd;
-}
-
 var get;
 var hasRequiredGet;
 
@@ -49535,7 +49509,7 @@ function requireGet () {
 	hasRequiredGet = 1;
 
 	var callBind = requireCallBindApplyHelpers();
-	var gOPD = requireGopd();
+	var gOPD = gopd;
 
 	var hasProtoAccessor;
 	try {
@@ -49600,21 +49574,12 @@ function requireGetProto () {
 	return getProto$1;
 }
 
-var hasown$1;
-var hasRequiredHasown;
+var call = Function.prototype.call;
+var $hasOwn = Object.prototype.hasOwnProperty;
+var bind$1 = functionBind;
 
-function requireHasown () {
-	if (hasRequiredHasown) return hasown$1;
-	hasRequiredHasown = 1;
-
-	var call = Function.prototype.call;
-	var $hasOwn = Object.prototype.hasOwnProperty;
-	var bind = functionBind;
-
-	/** @type {import('.')} */
-	hasown$1 = bind.call(call, $hasOwn);
-	return hasown$1;
-}
+/** @type {import('.')} */
+var hasown = bind$1.call(call, $hasOwn);
 
 var undefined$1;
 
@@ -49645,7 +49610,7 @@ var getEvalledConstructor = function (expressionSyntax) {
 	} catch (e) {}
 };
 
-var $gOPD = gopd$1;
+var $gOPD = gopd;
 var $defineProperty$1 = esDefineProperty;
 
 var throwTypeError = function () {
@@ -49856,13 +49821,13 @@ var LEGACY_ALIASES = {
 	'%WeakSetPrototype%': ['WeakSet', 'prototype']
 };
 
-var bind$1 = functionBind;
-var hasOwn$2 = requireHasown();
-var $concat = bind$1.call($call, Array.prototype.concat);
-var $spliceApply = bind$1.call($apply, Array.prototype.splice);
-var $replace = bind$1.call($call, String.prototype.replace);
-var $strSlice = bind$1.call($call, String.prototype.slice);
-var $exec = bind$1.call($call, RegExp.prototype.exec);
+var bind = functionBind;
+var hasOwn$2 = hasown;
+var $concat = bind.call($call, Array.prototype.concat);
+var $spliceApply = bind.call($apply, Array.prototype.splice);
+var $replace = bind.call($call, String.prototype.replace);
+var $strSlice = bind.call($call, String.prototype.slice);
+var $exec = bind.call($call, RegExp.prototype.exec);
 
 /* adapted from https://github.com/lodash/lodash/blob/4.17.15/dist/lodash.js#L6735-L6744 */
 var rePropName = /[^%.[\]]+|\[(?:(-?\d+(?:\.\d+)?)|(["'])((?:(?!\2)[^\\]|\\.)*?)\2)\]|(?=(?:\.|\[\])(?:\.|\[\]|%$))/g;
@@ -49993,56 +49958,6 @@ var getIntrinsic = function GetIntrinsic(name, allowMissing) {
 	return value;
 };
 
-var shams$1;
-var hasRequiredShams$1;
-
-function requireShams$1 () {
-	if (hasRequiredShams$1) return shams$1;
-	hasRequiredShams$1 = 1;
-
-	/* eslint complexity: [2, 18], max-statements: [2, 33] */
-	shams$1 = function hasSymbols() {
-		if (typeof Symbol !== 'function' || typeof Object.getOwnPropertySymbols !== 'function') { return false; }
-		if (typeof Symbol.iterator === 'symbol') { return true; }
-
-		var obj = {};
-		var sym = Symbol('test');
-		var symObj = Object(sym);
-		if (typeof sym === 'string') { return false; }
-
-		if (Object.prototype.toString.call(sym) !== '[object Symbol]') { return false; }
-		if (Object.prototype.toString.call(symObj) !== '[object Symbol]') { return false; }
-
-		// temp disabled per https://github.com/ljharb/object.assign/issues/17
-		// if (sym instanceof Symbol) { return false; }
-		// temp disabled per https://github.com/WebReflection/get-own-property-symbols/issues/4
-		// if (!(symObj instanceof Symbol)) { return false; }
-
-		// if (typeof Symbol.prototype.toString !== 'function') { return false; }
-		// if (String(sym) !== Symbol.prototype.toString.call(sym)) { return false; }
-
-		var symVal = 42;
-		obj[sym] = symVal;
-		for (sym in obj) { return false; } // eslint-disable-line no-restricted-syntax, no-unreachable-loop
-		if (typeof Object.keys === 'function' && Object.keys(obj).length !== 0) { return false; }
-
-		if (typeof Object.getOwnPropertyNames === 'function' && Object.getOwnPropertyNames(obj).length !== 0) { return false; }
-
-		var syms = Object.getOwnPropertySymbols(obj);
-		if (syms.length !== 1 || syms[0] !== sym) { return false; }
-
-		if (!Object.prototype.propertyIsEnumerable.call(obj, sym)) { return false; }
-
-		if (typeof Object.getOwnPropertyDescriptor === 'function') {
-			var descriptor = Object.getOwnPropertyDescriptor(obj, sym);
-			if (descriptor.value !== symVal || descriptor.enumerable !== true) { return false; }
-		}
-
-		return true;
-	};
-	return shams$1;
-}
-
 var shams;
 var hasRequiredShams;
 
@@ -50064,7 +49979,7 @@ var GetIntrinsic = getIntrinsic;
 var $defineProperty = GetIntrinsic('%Object.defineProperty%', true);
 
 var hasToStringTag = requireShams()();
-var hasOwn$1 = requireHasown();
+var hasOwn$1 = hasown;
 var $TypeError = requireType();
 
 var toStringTag = hasToStringTag ? Symbol.toStringTag : null;
@@ -50093,13 +50008,6 @@ var esSetTostringtag = function setToStringTag(object, value) {
 	}
 };
 
-var call = Function.prototype.call;
-var $hasOwn = Object.prototype.hasOwnProperty;
-var bind = functionBind;
-
-/** @type {import('.')} */
-var hasown = bind.call(call, $hasOwn);
-
 // populates missing values
 var populate$1 = function (dst, src) {
   Object.keys(src).forEach(function (prop) {
@@ -50112,8 +50020,8 @@ var populate$1 = function (dst, src) {
 var CombinedStream = combined_stream;
 var util = require$$1$1;
 var path = require$$1$8;
-var http$1 = require$$2$1;
-var https$1 = require$$3$1;
+var http$1 = http$5;
+var https$1 = https$4;
 var parseUrl$2 = require$$5$5.parse;
 var fs = require$$1;
 var Stream = stream$2.Stream;
@@ -50754,7 +50662,13 @@ function toFormData$1(obj, formData, options) {
     }
 
     if (utils$1.isArrayBuffer(value) || utils$1.isTypedArray(value)) {
-      return useBlob && typeof Blob === 'function' ? new Blob([value]) : Buffer.from(value);
+      if (useBlob && typeof _Blob === 'function') {
+        return new _Blob([value]);
+      }
+      if (typeof Buffer !== 'undefined') {
+        return Buffer.from(value);
+      }
+      throw new AxiosError$2('Blob is not supported. Use a Buffer instead.', AxiosError$2.ERR_NOT_SUPPORT);
     }
 
     return value;
@@ -50931,9 +50845,7 @@ prototype.append = function append(name, value) {
 
 prototype.toString = function toString(encoder) {
   const _encode = encoder
-    ? function (value) {
-        return encoder.call(this, value, encode$1);
-      }
+    ? (value) => encoder.call(this, value, encode$1)
     : encode$1;
 
   return this._pairs
@@ -50972,6 +50884,7 @@ function buildURL(url, params, options) {
   if (!params) {
     return url;
   }
+  url = url || '';
 
   const _options = utils$1.isFunction(options)
     ? {
@@ -51725,2567 +51638,7 @@ function getEnv(key) {
 
 var agent = {};
 
-var src$3 = {exports: {}};
-
-var browser$2 = {exports: {}};
-
-/**
- * Helpers.
- */
-
-var ms$1;
-var hasRequiredMs$1;
-
-function requireMs$1 () {
-	if (hasRequiredMs$1) return ms$1;
-	hasRequiredMs$1 = 1;
-	var s = 1000;
-	var m = s * 60;
-	var h = m * 60;
-	var d = h * 24;
-	var w = d * 7;
-	var y = d * 365.25;
-
-	/**
-	 * Parse or format the given `val`.
-	 *
-	 * Options:
-	 *
-	 *  - `long` verbose formatting [false]
-	 *
-	 * @param {String|Number} val
-	 * @param {Object} [options]
-	 * @throws {Error} throw an error if val is not a non-empty string or a number
-	 * @return {String|Number}
-	 * @api public
-	 */
-
-	ms$1 = function (val, options) {
-	  options = options || {};
-	  var type = typeof val;
-	  if (type === 'string' && val.length > 0) {
-	    return parse(val);
-	  } else if (type === 'number' && isFinite(val)) {
-	    return options.long ? fmtLong(val) : fmtShort(val);
-	  }
-	  throw new Error(
-	    'val is not a non-empty string or a valid number. val=' +
-	      JSON.stringify(val)
-	  );
-	};
-
-	/**
-	 * Parse the given `str` and return milliseconds.
-	 *
-	 * @param {String} str
-	 * @return {Number}
-	 * @api private
-	 */
-
-	function parse(str) {
-	  str = String(str);
-	  if (str.length > 100) {
-	    return;
-	  }
-	  var match = /^(-?(?:\d+)?\.?\d+) *(milliseconds?|msecs?|ms|seconds?|secs?|s|minutes?|mins?|m|hours?|hrs?|h|days?|d|weeks?|w|years?|yrs?|y)?$/i.exec(
-	    str
-	  );
-	  if (!match) {
-	    return;
-	  }
-	  var n = parseFloat(match[1]);
-	  var type = (match[2] || 'ms').toLowerCase();
-	  switch (type) {
-	    case 'years':
-	    case 'year':
-	    case 'yrs':
-	    case 'yr':
-	    case 'y':
-	      return n * y;
-	    case 'weeks':
-	    case 'week':
-	    case 'w':
-	      return n * w;
-	    case 'days':
-	    case 'day':
-	    case 'd':
-	      return n * d;
-	    case 'hours':
-	    case 'hour':
-	    case 'hrs':
-	    case 'hr':
-	    case 'h':
-	      return n * h;
-	    case 'minutes':
-	    case 'minute':
-	    case 'mins':
-	    case 'min':
-	    case 'm':
-	      return n * m;
-	    case 'seconds':
-	    case 'second':
-	    case 'secs':
-	    case 'sec':
-	    case 's':
-	      return n * s;
-	    case 'milliseconds':
-	    case 'millisecond':
-	    case 'msecs':
-	    case 'msec':
-	    case 'ms':
-	      return n;
-	    default:
-	      return undefined;
-	  }
-	}
-
-	/**
-	 * Short format for `ms`.
-	 *
-	 * @param {Number} ms
-	 * @return {String}
-	 * @api private
-	 */
-
-	function fmtShort(ms) {
-	  var msAbs = Math.abs(ms);
-	  if (msAbs >= d) {
-	    return Math.round(ms / d) + 'd';
-	  }
-	  if (msAbs >= h) {
-	    return Math.round(ms / h) + 'h';
-	  }
-	  if (msAbs >= m) {
-	    return Math.round(ms / m) + 'm';
-	  }
-	  if (msAbs >= s) {
-	    return Math.round(ms / s) + 's';
-	  }
-	  return ms + 'ms';
-	}
-
-	/**
-	 * Long format for `ms`.
-	 *
-	 * @param {Number} ms
-	 * @return {String}
-	 * @api private
-	 */
-
-	function fmtLong(ms) {
-	  var msAbs = Math.abs(ms);
-	  if (msAbs >= d) {
-	    return plural(ms, msAbs, d, 'day');
-	  }
-	  if (msAbs >= h) {
-	    return plural(ms, msAbs, h, 'hour');
-	  }
-	  if (msAbs >= m) {
-	    return plural(ms, msAbs, m, 'minute');
-	  }
-	  if (msAbs >= s) {
-	    return plural(ms, msAbs, s, 'second');
-	  }
-	  return ms + ' ms';
-	}
-
-	/**
-	 * Pluralization helper.
-	 */
-
-	function plural(ms, msAbs, n, name) {
-	  var isPlural = msAbs >= n * 1.5;
-	  return Math.round(ms / n) + ' ' + name + (isPlural ? 's' : '');
-	}
-	return ms$1;
-}
-
-var common$2;
-var hasRequiredCommon$2;
-
-function requireCommon$2 () {
-	if (hasRequiredCommon$2) return common$2;
-	hasRequiredCommon$2 = 1;
-	/**
-	 * This is the common logic for both the Node.js and web browser
-	 * implementations of `debug()`.
-	 */
-
-	function setup(env) {
-		createDebug.debug = createDebug;
-		createDebug.default = createDebug;
-		createDebug.coerce = coerce;
-		createDebug.disable = disable;
-		createDebug.enable = enable;
-		createDebug.enabled = enabled;
-		createDebug.humanize = requireMs$1();
-		createDebug.destroy = destroy;
-
-		Object.keys(env).forEach(key => {
-			createDebug[key] = env[key];
-		});
-
-		/**
-		* The currently active debug mode names, and names to skip.
-		*/
-
-		createDebug.names = [];
-		createDebug.skips = [];
-
-		/**
-		* Map of special "%n" handling functions, for the debug "format" argument.
-		*
-		* Valid key names are a single, lower or upper-case letter, i.e. "n" and "N".
-		*/
-		createDebug.formatters = {};
-
-		/**
-		* Selects a color for a debug namespace
-		* @param {String} namespace The namespace string for the debug instance to be colored
-		* @return {Number|String} An ANSI color code for the given namespace
-		* @api private
-		*/
-		function selectColor(namespace) {
-			let hash = 0;
-
-			for (let i = 0; i < namespace.length; i++) {
-				hash = ((hash << 5) - hash) + namespace.charCodeAt(i);
-				hash |= 0; // Convert to 32bit integer
-			}
-
-			return createDebug.colors[Math.abs(hash) % createDebug.colors.length];
-		}
-		createDebug.selectColor = selectColor;
-
-		/**
-		* Create a debugger with the given `namespace`.
-		*
-		* @param {String} namespace
-		* @return {Function}
-		* @api public
-		*/
-		function createDebug(namespace) {
-			let prevTime;
-			let enableOverride = null;
-			let namespacesCache;
-			let enabledCache;
-
-			function debug(...args) {
-				// Disabled?
-				if (!debug.enabled) {
-					return;
-				}
-
-				const self = debug;
-
-				// Set `diff` timestamp
-				const curr = Number(new Date());
-				const ms = curr - (prevTime || curr);
-				self.diff = ms;
-				self.prev = prevTime;
-				self.curr = curr;
-				prevTime = curr;
-
-				args[0] = createDebug.coerce(args[0]);
-
-				if (typeof args[0] !== 'string') {
-					// Anything else let's inspect with %O
-					args.unshift('%O');
-				}
-
-				// Apply any `formatters` transformations
-				let index = 0;
-				args[0] = args[0].replace(/%([a-zA-Z%])/g, (match, format) => {
-					// If we encounter an escaped % then don't increase the array index
-					if (match === '%%') {
-						return '%';
-					}
-					index++;
-					const formatter = createDebug.formatters[format];
-					if (typeof formatter === 'function') {
-						const val = args[index];
-						match = formatter.call(self, val);
-
-						// Now we need to remove `args[index]` since it's inlined in the `format`
-						args.splice(index, 1);
-						index--;
-					}
-					return match;
-				});
-
-				// Apply env-specific formatting (colors, etc.)
-				createDebug.formatArgs.call(self, args);
-
-				const logFn = self.log || createDebug.log;
-				logFn.apply(self, args);
-			}
-
-			debug.namespace = namespace;
-			debug.useColors = createDebug.useColors();
-			debug.color = createDebug.selectColor(namespace);
-			debug.extend = extend;
-			debug.destroy = createDebug.destroy; // XXX Temporary. Will be removed in the next major release.
-
-			Object.defineProperty(debug, 'enabled', {
-				enumerable: true,
-				configurable: false,
-				get: () => {
-					if (enableOverride !== null) {
-						return enableOverride;
-					}
-					if (namespacesCache !== createDebug.namespaces) {
-						namespacesCache = createDebug.namespaces;
-						enabledCache = createDebug.enabled(namespace);
-					}
-
-					return enabledCache;
-				},
-				set: v => {
-					enableOverride = v;
-				}
-			});
-
-			// Env-specific initialization logic for debug instances
-			if (typeof createDebug.init === 'function') {
-				createDebug.init(debug);
-			}
-
-			return debug;
-		}
-
-		function extend(namespace, delimiter) {
-			const newDebug = createDebug(this.namespace + (typeof delimiter === 'undefined' ? ':' : delimiter) + namespace);
-			newDebug.log = this.log;
-			return newDebug;
-		}
-
-		/**
-		* Enables a debug mode by namespaces. This can include modes
-		* separated by a colon and wildcards.
-		*
-		* @param {String} namespaces
-		* @api public
-		*/
-		function enable(namespaces) {
-			createDebug.save(namespaces);
-			createDebug.namespaces = namespaces;
-
-			createDebug.names = [];
-			createDebug.skips = [];
-
-			const split = (typeof namespaces === 'string' ? namespaces : '')
-				.trim()
-				.replace(/\s+/g, ',')
-				.split(',')
-				.filter(Boolean);
-
-			for (const ns of split) {
-				if (ns[0] === '-') {
-					createDebug.skips.push(ns.slice(1));
-				} else {
-					createDebug.names.push(ns);
-				}
-			}
-		}
-
-		/**
-		 * Checks if the given string matches a namespace template, honoring
-		 * asterisks as wildcards.
-		 *
-		 * @param {String} search
-		 * @param {String} template
-		 * @return {Boolean}
-		 */
-		function matchesTemplate(search, template) {
-			let searchIndex = 0;
-			let templateIndex = 0;
-			let starIndex = -1;
-			let matchIndex = 0;
-
-			while (searchIndex < search.length) {
-				if (templateIndex < template.length && (template[templateIndex] === search[searchIndex] || template[templateIndex] === '*')) {
-					// Match character or proceed with wildcard
-					if (template[templateIndex] === '*') {
-						starIndex = templateIndex;
-						matchIndex = searchIndex;
-						templateIndex++; // Skip the '*'
-					} else {
-						searchIndex++;
-						templateIndex++;
-					}
-				} else if (starIndex !== -1) { // eslint-disable-line no-negated-condition
-					// Backtrack to the last '*' and try to match more characters
-					templateIndex = starIndex + 1;
-					matchIndex++;
-					searchIndex = matchIndex;
-				} else {
-					return false; // No match
-				}
-			}
-
-			// Handle trailing '*' in template
-			while (templateIndex < template.length && template[templateIndex] === '*') {
-				templateIndex++;
-			}
-
-			return templateIndex === template.length;
-		}
-
-		/**
-		* Disable debug output.
-		*
-		* @return {String} namespaces
-		* @api public
-		*/
-		function disable() {
-			const namespaces = [
-				...createDebug.names,
-				...createDebug.skips.map(namespace => '-' + namespace)
-			].join(',');
-			createDebug.enable('');
-			return namespaces;
-		}
-
-		/**
-		* Returns true if the given mode name is enabled, false otherwise.
-		*
-		* @param {String} name
-		* @return {Boolean}
-		* @api public
-		*/
-		function enabled(name) {
-			for (const skip of createDebug.skips) {
-				if (matchesTemplate(name, skip)) {
-					return false;
-				}
-			}
-
-			for (const ns of createDebug.names) {
-				if (matchesTemplate(name, ns)) {
-					return true;
-				}
-			}
-
-			return false;
-		}
-
-		/**
-		* Coerce `val`.
-		*
-		* @param {Mixed} val
-		* @return {Mixed}
-		* @api private
-		*/
-		function coerce(val) {
-			if (val instanceof Error) {
-				return val.stack || val.message;
-			}
-			return val;
-		}
-
-		/**
-		* XXX DO NOT USE. This is a temporary stub function.
-		* XXX It WILL be removed in the next major release.
-		*/
-		function destroy() {
-			console.warn('Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.');
-		}
-
-		createDebug.enable(createDebug.load());
-
-		return createDebug;
-	}
-
-	common$2 = setup;
-	return common$2;
-}
-
-/* eslint-env browser */
-
-var hasRequiredBrowser$2;
-
-function requireBrowser$2 () {
-	if (hasRequiredBrowser$2) return browser$2.exports;
-	hasRequiredBrowser$2 = 1;
-	(function (module, exports) {
-		/**
-		 * This is the web browser implementation of `debug()`.
-		 */
-
-		exports.formatArgs = formatArgs;
-		exports.save = save;
-		exports.load = load;
-		exports.useColors = useColors;
-		exports.storage = localstorage();
-		exports.destroy = (() => {
-			let warned = false;
-
-			return () => {
-				if (!warned) {
-					warned = true;
-					console.warn('Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.');
-				}
-			};
-		})();
-
-		/**
-		 * Colors.
-		 */
-
-		exports.colors = [
-			'#0000CC',
-			'#0000FF',
-			'#0033CC',
-			'#0033FF',
-			'#0066CC',
-			'#0066FF',
-			'#0099CC',
-			'#0099FF',
-			'#00CC00',
-			'#00CC33',
-			'#00CC66',
-			'#00CC99',
-			'#00CCCC',
-			'#00CCFF',
-			'#3300CC',
-			'#3300FF',
-			'#3333CC',
-			'#3333FF',
-			'#3366CC',
-			'#3366FF',
-			'#3399CC',
-			'#3399FF',
-			'#33CC00',
-			'#33CC33',
-			'#33CC66',
-			'#33CC99',
-			'#33CCCC',
-			'#33CCFF',
-			'#6600CC',
-			'#6600FF',
-			'#6633CC',
-			'#6633FF',
-			'#66CC00',
-			'#66CC33',
-			'#9900CC',
-			'#9900FF',
-			'#9933CC',
-			'#9933FF',
-			'#99CC00',
-			'#99CC33',
-			'#CC0000',
-			'#CC0033',
-			'#CC0066',
-			'#CC0099',
-			'#CC00CC',
-			'#CC00FF',
-			'#CC3300',
-			'#CC3333',
-			'#CC3366',
-			'#CC3399',
-			'#CC33CC',
-			'#CC33FF',
-			'#CC6600',
-			'#CC6633',
-			'#CC9900',
-			'#CC9933',
-			'#CCCC00',
-			'#CCCC33',
-			'#FF0000',
-			'#FF0033',
-			'#FF0066',
-			'#FF0099',
-			'#FF00CC',
-			'#FF00FF',
-			'#FF3300',
-			'#FF3333',
-			'#FF3366',
-			'#FF3399',
-			'#FF33CC',
-			'#FF33FF',
-			'#FF6600',
-			'#FF6633',
-			'#FF9900',
-			'#FF9933',
-			'#FFCC00',
-			'#FFCC33'
-		];
-
-		/**
-		 * Currently only WebKit-based Web Inspectors, Firefox >= v31,
-		 * and the Firebug extension (any Firefox version) are known
-		 * to support "%c" CSS customizations.
-		 *
-		 * TODO: add a `localStorage` variable to explicitly enable/disable colors
-		 */
-
-		// eslint-disable-next-line complexity
-		function useColors() {
-			// NB: In an Electron preload script, document will be defined but not fully
-			// initialized. Since we know we're in Chrome, we'll just detect this case
-			// explicitly
-			if (typeof window !== 'undefined' && window.process && (window.process.type === 'renderer' || window.process.__nwjs)) {
-				return true;
-			}
-
-			// Internet Explorer and Edge do not support colors.
-			if (typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/(edge|trident)\/(\d+)/)) {
-				return false;
-			}
-
-			let m;
-
-			// Is webkit? http://stackoverflow.com/a/16459606/376773
-			// document is undefined in react-native: https://github.com/facebook/react-native/pull/1632
-			// eslint-disable-next-line no-return-assign
-			return (typeof document !== 'undefined' && document.documentElement && document.documentElement.style && document.documentElement.style.WebkitAppearance) ||
-				// Is firebug? http://stackoverflow.com/a/398120/376773
-				(typeof window !== 'undefined' && window.console && (window.console.firebug || (window.console.exception && window.console.table))) ||
-				// Is firefox >= v31?
-				// https://developer.mozilla.org/en-US/docs/Tools/Web_Console#Styling_messages
-				(typeof navigator !== 'undefined' && navigator.userAgent && (m = navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/)) && parseInt(m[1], 10) >= 31) ||
-				// Double check webkit in userAgent just in case we are in a worker
-				(typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/applewebkit\/(\d+)/));
-		}
-
-		/**
-		 * Colorize log arguments if enabled.
-		 *
-		 * @api public
-		 */
-
-		function formatArgs(args) {
-			args[0] = (this.useColors ? '%c' : '') +
-				this.namespace +
-				(this.useColors ? ' %c' : ' ') +
-				args[0] +
-				(this.useColors ? '%c ' : ' ') +
-				'+' + module.exports.humanize(this.diff);
-
-			if (!this.useColors) {
-				return;
-			}
-
-			const c = 'color: ' + this.color;
-			args.splice(1, 0, c, 'color: inherit');
-
-			// The final "%c" is somewhat tricky, because there could be other
-			// arguments passed either before or after the %c, so we need to
-			// figure out the correct index to insert the CSS into
-			let index = 0;
-			let lastC = 0;
-			args[0].replace(/%[a-zA-Z%]/g, match => {
-				if (match === '%%') {
-					return;
-				}
-				index++;
-				if (match === '%c') {
-					// We only are interested in the *last* %c
-					// (the user may have provided their own)
-					lastC = index;
-				}
-			});
-
-			args.splice(lastC, 0, c);
-		}
-
-		/**
-		 * Invokes `console.debug()` when available.
-		 * No-op when `console.debug` is not a "function".
-		 * If `console.debug` is not available, falls back
-		 * to `console.log`.
-		 *
-		 * @api public
-		 */
-		exports.log = console.debug || console.log || (() => {});
-
-		/**
-		 * Save `namespaces`.
-		 *
-		 * @param {String} namespaces
-		 * @api private
-		 */
-		function save(namespaces) {
-			try {
-				if (namespaces) {
-					exports.storage.setItem('debug', namespaces);
-				} else {
-					exports.storage.removeItem('debug');
-				}
-			} catch (error) {
-				// Swallow
-				// XXX (@Qix-) should we be logging these?
-			}
-		}
-
-		/**
-		 * Load `namespaces`.
-		 *
-		 * @return {String} returns the previously persisted debug modes
-		 * @api private
-		 */
-		function load() {
-			let r;
-			try {
-				r = exports.storage.getItem('debug') || exports.storage.getItem('DEBUG') ;
-			} catch (error) {
-				// Swallow
-				// XXX (@Qix-) should we be logging these?
-			}
-
-			// If debug isn't set in LS, and we're in Electron, try to load $DEBUG
-			if (!r && typeof process !== 'undefined' && 'env' in process) {
-				r = process.env.DEBUG;
-			}
-
-			return r;
-		}
-
-		/**
-		 * Localstorage attempts to return the localstorage.
-		 *
-		 * This is necessary because safari throws
-		 * when a user disables cookies/localstorage
-		 * and you attempt to access it.
-		 *
-		 * @return {LocalStorage}
-		 * @api private
-		 */
-
-		function localstorage() {
-			try {
-				// TVMLKit (Apple TV JS Runtime) does not have a window object, just localStorage in the global context
-				// The Browser also has localStorage in the global context.
-				return localStorage;
-			} catch (error) {
-				// Swallow
-				// XXX (@Qix-) should we be logging these?
-			}
-		}
-
-		module.exports = requireCommon$2()(exports);
-
-		const {formatters} = module.exports;
-
-		/**
-		 * Map %j to `JSON.stringify()`, since no Web Inspectors do that by default.
-		 */
-
-		formatters.j = function (v) {
-			try {
-				return JSON.stringify(v);
-			} catch (error) {
-				return '[UnexpectedJSONParseError]: ' + error.message;
-			}
-		}; 
-	} (browser$2, browser$2.exports));
-	return browser$2.exports;
-}
-
-var node$2 = {exports: {}};
-
-var hasFlag;
-var hasRequiredHasFlag;
-
-function requireHasFlag () {
-	if (hasRequiredHasFlag) return hasFlag;
-	hasRequiredHasFlag = 1;
-
-	hasFlag = (flag, argv = process.argv) => {
-		const prefix = flag.startsWith('-') ? '' : (flag.length === 1 ? '-' : '--');
-		const position = argv.indexOf(prefix + flag);
-		const terminatorPosition = argv.indexOf('--');
-		return position !== -1 && (terminatorPosition === -1 || position < terminatorPosition);
-	};
-	return hasFlag;
-}
-
-var supportsColor_1;
-var hasRequiredSupportsColor;
-
-function requireSupportsColor () {
-	if (hasRequiredSupportsColor) return supportsColor_1;
-	hasRequiredSupportsColor = 1;
-	const os = require$$0$1;
-	const tty = require$$0$9;
-	const hasFlag = requireHasFlag();
-
-	const {env} = process;
-
-	let forceColor;
-	if (hasFlag('no-color') ||
-		hasFlag('no-colors') ||
-		hasFlag('color=false') ||
-		hasFlag('color=never')) {
-		forceColor = 0;
-	} else if (hasFlag('color') ||
-		hasFlag('colors') ||
-		hasFlag('color=true') ||
-		hasFlag('color=always')) {
-		forceColor = 1;
-	}
-
-	if ('FORCE_COLOR' in env) {
-		if (env.FORCE_COLOR === 'true') {
-			forceColor = 1;
-		} else if (env.FORCE_COLOR === 'false') {
-			forceColor = 0;
-		} else {
-			forceColor = env.FORCE_COLOR.length === 0 ? 1 : Math.min(parseInt(env.FORCE_COLOR, 10), 3);
-		}
-	}
-
-	function translateLevel(level) {
-		if (level === 0) {
-			return false;
-		}
-
-		return {
-			level,
-			hasBasic: true,
-			has256: level >= 2,
-			has16m: level >= 3
-		};
-	}
-
-	function supportsColor(haveStream, streamIsTTY) {
-		if (forceColor === 0) {
-			return 0;
-		}
-
-		if (hasFlag('color=16m') ||
-			hasFlag('color=full') ||
-			hasFlag('color=truecolor')) {
-			return 3;
-		}
-
-		if (hasFlag('color=256')) {
-			return 2;
-		}
-
-		if (haveStream && !streamIsTTY && forceColor === undefined) {
-			return 0;
-		}
-
-		const min = forceColor || 0;
-
-		if (env.TERM === 'dumb') {
-			return min;
-		}
-
-		if (process.platform === 'win32') {
-			// Windows 10 build 10586 is the first Windows release that supports 256 colors.
-			// Windows 10 build 14931 is the first release that supports 16m/TrueColor.
-			const osRelease = os.release().split('.');
-			if (
-				Number(osRelease[0]) >= 10 &&
-				Number(osRelease[2]) >= 10586
-			) {
-				return Number(osRelease[2]) >= 14931 ? 3 : 2;
-			}
-
-			return 1;
-		}
-
-		if ('CI' in env) {
-			if (['TRAVIS', 'CIRCLECI', 'APPVEYOR', 'GITLAB_CI', 'GITHUB_ACTIONS', 'BUILDKITE'].some(sign => sign in env) || env.CI_NAME === 'codeship') {
-				return 1;
-			}
-
-			return min;
-		}
-
-		if ('TEAMCITY_VERSION' in env) {
-			return /^(9\.(0*[1-9]\d*)\.|\d{2,}\.)/.test(env.TEAMCITY_VERSION) ? 1 : 0;
-		}
-
-		if (env.COLORTERM === 'truecolor') {
-			return 3;
-		}
-
-		if ('TERM_PROGRAM' in env) {
-			const version = parseInt((env.TERM_PROGRAM_VERSION || '').split('.')[0], 10);
-
-			switch (env.TERM_PROGRAM) {
-				case 'iTerm.app':
-					return version >= 3 ? 3 : 2;
-				case 'Apple_Terminal':
-					return 2;
-				// No default
-			}
-		}
-
-		if (/-256(color)?$/i.test(env.TERM)) {
-			return 2;
-		}
-
-		if (/^screen|^xterm|^vt100|^vt220|^rxvt|color|ansi|cygwin|linux/i.test(env.TERM)) {
-			return 1;
-		}
-
-		if ('COLORTERM' in env) {
-			return 1;
-		}
-
-		return min;
-	}
-
-	function getSupportLevel(stream) {
-		const level = supportsColor(stream, stream && stream.isTTY);
-		return translateLevel(level);
-	}
-
-	supportsColor_1 = {
-		supportsColor: getSupportLevel,
-		stdout: translateLevel(supportsColor(true, tty.isatty(1))),
-		stderr: translateLevel(supportsColor(true, tty.isatty(2)))
-	};
-	return supportsColor_1;
-}
-
-/**
- * Module dependencies.
- */
-
-var hasRequiredNode$2;
-
-function requireNode$2 () {
-	if (hasRequiredNode$2) return node$2.exports;
-	hasRequiredNode$2 = 1;
-	(function (module, exports) {
-		const tty = require$$0$9;
-		const util = require$$1$1;
-
-		/**
-		 * This is the Node.js implementation of `debug()`.
-		 */
-
-		exports.init = init;
-		exports.log = log;
-		exports.formatArgs = formatArgs;
-		exports.save = save;
-		exports.load = load;
-		exports.useColors = useColors;
-		exports.destroy = util.deprecate(
-			() => {},
-			'Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.'
-		);
-
-		/**
-		 * Colors.
-		 */
-
-		exports.colors = [6, 2, 3, 4, 5, 1];
-
-		try {
-			// Optional dependency (as in, doesn't need to be installed, NOT like optionalDependencies in package.json)
-			// eslint-disable-next-line import/no-extraneous-dependencies
-			const supportsColor = requireSupportsColor();
-
-			if (supportsColor && (supportsColor.stderr || supportsColor).level >= 2) {
-				exports.colors = [
-					20,
-					21,
-					26,
-					27,
-					32,
-					33,
-					38,
-					39,
-					40,
-					41,
-					42,
-					43,
-					44,
-					45,
-					56,
-					57,
-					62,
-					63,
-					68,
-					69,
-					74,
-					75,
-					76,
-					77,
-					78,
-					79,
-					80,
-					81,
-					92,
-					93,
-					98,
-					99,
-					112,
-					113,
-					128,
-					129,
-					134,
-					135,
-					148,
-					149,
-					160,
-					161,
-					162,
-					163,
-					164,
-					165,
-					166,
-					167,
-					168,
-					169,
-					170,
-					171,
-					172,
-					173,
-					178,
-					179,
-					184,
-					185,
-					196,
-					197,
-					198,
-					199,
-					200,
-					201,
-					202,
-					203,
-					204,
-					205,
-					206,
-					207,
-					208,
-					209,
-					214,
-					215,
-					220,
-					221
-				];
-			}
-		} catch (error) {
-			// Swallow - we only care if `supports-color` is available; it doesn't have to be.
-		}
-
-		/**
-		 * Build up the default `inspectOpts` object from the environment variables.
-		 *
-		 *   $ DEBUG_COLORS=no DEBUG_DEPTH=10 DEBUG_SHOW_HIDDEN=enabled node script.js
-		 */
-
-		exports.inspectOpts = Object.keys(process.env).filter(key => {
-			return /^debug_/i.test(key);
-		}).reduce((obj, key) => {
-			// Camel-case
-			const prop = key
-				.substring(6)
-				.toLowerCase()
-				.replace(/_([a-z])/g, (_, k) => {
-					return k.toUpperCase();
-				});
-
-			// Coerce string value into JS value
-			let val = process.env[key];
-			if (/^(yes|on|true|enabled)$/i.test(val)) {
-				val = true;
-			} else if (/^(no|off|false|disabled)$/i.test(val)) {
-				val = false;
-			} else if (val === 'null') {
-				val = null;
-			} else {
-				val = Number(val);
-			}
-
-			obj[prop] = val;
-			return obj;
-		}, {});
-
-		/**
-		 * Is stdout a TTY? Colored output is enabled when `true`.
-		 */
-
-		function useColors() {
-			return 'colors' in exports.inspectOpts ?
-				Boolean(exports.inspectOpts.colors) :
-				tty.isatty(process.stderr.fd);
-		}
-
-		/**
-		 * Adds ANSI color escape codes if enabled.
-		 *
-		 * @api public
-		 */
-
-		function formatArgs(args) {
-			const {namespace: name, useColors} = this;
-
-			if (useColors) {
-				const c = this.color;
-				const colorCode = '\u001B[3' + (c < 8 ? c : '8;5;' + c);
-				const prefix = `  ${colorCode};1m${name} \u001B[0m`;
-
-				args[0] = prefix + args[0].split('\n').join('\n' + prefix);
-				args.push(colorCode + 'm+' + module.exports.humanize(this.diff) + '\u001B[0m');
-			} else {
-				args[0] = getDate() + name + ' ' + args[0];
-			}
-		}
-
-		function getDate() {
-			if (exports.inspectOpts.hideDate) {
-				return '';
-			}
-			return new Date().toISOString() + ' ';
-		}
-
-		/**
-		 * Invokes `util.formatWithOptions()` with the specified arguments and writes to stderr.
-		 */
-
-		function log(...args) {
-			return process.stderr.write(util.formatWithOptions(exports.inspectOpts, ...args) + '\n');
-		}
-
-		/**
-		 * Save `namespaces`.
-		 *
-		 * @param {String} namespaces
-		 * @api private
-		 */
-		function save(namespaces) {
-			if (namespaces) {
-				process.env.DEBUG = namespaces;
-			} else {
-				// If you set a process.env field to null or undefined, it gets cast to the
-				// string 'null' or 'undefined'. Just delete instead.
-				delete process.env.DEBUG;
-			}
-		}
-
-		/**
-		 * Load `namespaces`.
-		 *
-		 * @return {String} returns the previously persisted debug modes
-		 * @api private
-		 */
-
-		function load() {
-			return process.env.DEBUG;
-		}
-
-		/**
-		 * Init logic for `debug` instances.
-		 *
-		 * Create a new `inspectOpts` object in case `useColors` is set
-		 * differently for a particular `debug` instance.
-		 */
-
-		function init(debug) {
-			debug.inspectOpts = {};
-
-			const keys = Object.keys(exports.inspectOpts);
-			for (let i = 0; i < keys.length; i++) {
-				debug.inspectOpts[keys[i]] = exports.inspectOpts[keys[i]];
-			}
-		}
-
-		module.exports = requireCommon$2()(exports);
-
-		const {formatters} = module.exports;
-
-		/**
-		 * Map %o to `util.inspect()`, all on a single line.
-		 */
-
-		formatters.o = function (v) {
-			this.inspectOpts.colors = this.useColors;
-			return util.inspect(v, this.inspectOpts)
-				.split('\n')
-				.map(str => str.trim())
-				.join(' ');
-		};
-
-		/**
-		 * Map %O to `util.inspect()`, allowing multiple lines if needed.
-		 */
-
-		formatters.O = function (v) {
-			this.inspectOpts.colors = this.useColors;
-			return util.inspect(v, this.inspectOpts);
-		}; 
-	} (node$2, node$2.exports));
-	return node$2.exports;
-}
-
-/**
- * Detect Electron renderer / nwjs process, which is node, but we should
- * treat as a browser.
- */
-
-if (typeof process === 'undefined' || process.type === 'renderer' || process.browser === true || process.__nwjs) {
-	src$3.exports = requireBrowser$2();
-} else {
-	src$3.exports = requireNode$2();
-}
-
-var srcExports$1 = src$3.exports;
-
-var src$2 = {exports: {}};
-
-var browser$1 = {exports: {}};
-
-var common$1;
-var hasRequiredCommon$1;
-
-function requireCommon$1 () {
-	if (hasRequiredCommon$1) return common$1;
-	hasRequiredCommon$1 = 1;
-	/**
-	 * This is the common logic for both the Node.js and web browser
-	 * implementations of `debug()`.
-	 */
-
-	function setup(env) {
-		createDebug.debug = createDebug;
-		createDebug.default = createDebug;
-		createDebug.coerce = coerce;
-		createDebug.disable = disable;
-		createDebug.enable = enable;
-		createDebug.enabled = enabled;
-		createDebug.humanize = requireMs$1();
-		createDebug.destroy = destroy;
-
-		Object.keys(env).forEach(key => {
-			createDebug[key] = env[key];
-		});
-
-		/**
-		* The currently active debug mode names, and names to skip.
-		*/
-
-		createDebug.names = [];
-		createDebug.skips = [];
-
-		/**
-		* Map of special "%n" handling functions, for the debug "format" argument.
-		*
-		* Valid key names are a single, lower or upper-case letter, i.e. "n" and "N".
-		*/
-		createDebug.formatters = {};
-
-		/**
-		* Selects a color for a debug namespace
-		* @param {String} namespace The namespace string for the debug instance to be colored
-		* @return {Number|String} An ANSI color code for the given namespace
-		* @api private
-		*/
-		function selectColor(namespace) {
-			let hash = 0;
-
-			for (let i = 0; i < namespace.length; i++) {
-				hash = ((hash << 5) - hash) + namespace.charCodeAt(i);
-				hash |= 0; // Convert to 32bit integer
-			}
-
-			return createDebug.colors[Math.abs(hash) % createDebug.colors.length];
-		}
-		createDebug.selectColor = selectColor;
-
-		/**
-		* Create a debugger with the given `namespace`.
-		*
-		* @param {String} namespace
-		* @return {Function}
-		* @api public
-		*/
-		function createDebug(namespace) {
-			let prevTime;
-			let enableOverride = null;
-			let namespacesCache;
-			let enabledCache;
-
-			function debug(...args) {
-				// Disabled?
-				if (!debug.enabled) {
-					return;
-				}
-
-				const self = debug;
-
-				// Set `diff` timestamp
-				const curr = Number(new Date());
-				const ms = curr - (prevTime || curr);
-				self.diff = ms;
-				self.prev = prevTime;
-				self.curr = curr;
-				prevTime = curr;
-
-				args[0] = createDebug.coerce(args[0]);
-
-				if (typeof args[0] !== 'string') {
-					// Anything else let's inspect with %O
-					args.unshift('%O');
-				}
-
-				// Apply any `formatters` transformations
-				let index = 0;
-				args[0] = args[0].replace(/%([a-zA-Z%])/g, (match, format) => {
-					// If we encounter an escaped % then don't increase the array index
-					if (match === '%%') {
-						return '%';
-					}
-					index++;
-					const formatter = createDebug.formatters[format];
-					if (typeof formatter === 'function') {
-						const val = args[index];
-						match = formatter.call(self, val);
-
-						// Now we need to remove `args[index]` since it's inlined in the `format`
-						args.splice(index, 1);
-						index--;
-					}
-					return match;
-				});
-
-				// Apply env-specific formatting (colors, etc.)
-				createDebug.formatArgs.call(self, args);
-
-				const logFn = self.log || createDebug.log;
-				logFn.apply(self, args);
-			}
-
-			debug.namespace = namespace;
-			debug.useColors = createDebug.useColors();
-			debug.color = createDebug.selectColor(namespace);
-			debug.extend = extend;
-			debug.destroy = createDebug.destroy; // XXX Temporary. Will be removed in the next major release.
-
-			Object.defineProperty(debug, 'enabled', {
-				enumerable: true,
-				configurable: false,
-				get: () => {
-					if (enableOverride !== null) {
-						return enableOverride;
-					}
-					if (namespacesCache !== createDebug.namespaces) {
-						namespacesCache = createDebug.namespaces;
-						enabledCache = createDebug.enabled(namespace);
-					}
-
-					return enabledCache;
-				},
-				set: v => {
-					enableOverride = v;
-				}
-			});
-
-			// Env-specific initialization logic for debug instances
-			if (typeof createDebug.init === 'function') {
-				createDebug.init(debug);
-			}
-
-			return debug;
-		}
-
-		function extend(namespace, delimiter) {
-			const newDebug = createDebug(this.namespace + (typeof delimiter === 'undefined' ? ':' : delimiter) + namespace);
-			newDebug.log = this.log;
-			return newDebug;
-		}
-
-		/**
-		* Enables a debug mode by namespaces. This can include modes
-		* separated by a colon and wildcards.
-		*
-		* @param {String} namespaces
-		* @api public
-		*/
-		function enable(namespaces) {
-			createDebug.save(namespaces);
-			createDebug.namespaces = namespaces;
-
-			createDebug.names = [];
-			createDebug.skips = [];
-
-			const split = (typeof namespaces === 'string' ? namespaces : '')
-				.trim()
-				.replace(/\s+/g, ',')
-				.split(',')
-				.filter(Boolean);
-
-			for (const ns of split) {
-				if (ns[0] === '-') {
-					createDebug.skips.push(ns.slice(1));
-				} else {
-					createDebug.names.push(ns);
-				}
-			}
-		}
-
-		/**
-		 * Checks if the given string matches a namespace template, honoring
-		 * asterisks as wildcards.
-		 *
-		 * @param {String} search
-		 * @param {String} template
-		 * @return {Boolean}
-		 */
-		function matchesTemplate(search, template) {
-			let searchIndex = 0;
-			let templateIndex = 0;
-			let starIndex = -1;
-			let matchIndex = 0;
-
-			while (searchIndex < search.length) {
-				if (templateIndex < template.length && (template[templateIndex] === search[searchIndex] || template[templateIndex] === '*')) {
-					// Match character or proceed with wildcard
-					if (template[templateIndex] === '*') {
-						starIndex = templateIndex;
-						matchIndex = searchIndex;
-						templateIndex++; // Skip the '*'
-					} else {
-						searchIndex++;
-						templateIndex++;
-					}
-				} else if (starIndex !== -1) { // eslint-disable-line no-negated-condition
-					// Backtrack to the last '*' and try to match more characters
-					templateIndex = starIndex + 1;
-					matchIndex++;
-					searchIndex = matchIndex;
-				} else {
-					return false; // No match
-				}
-			}
-
-			// Handle trailing '*' in template
-			while (templateIndex < template.length && template[templateIndex] === '*') {
-				templateIndex++;
-			}
-
-			return templateIndex === template.length;
-		}
-
-		/**
-		* Disable debug output.
-		*
-		* @return {String} namespaces
-		* @api public
-		*/
-		function disable() {
-			const namespaces = [
-				...createDebug.names,
-				...createDebug.skips.map(namespace => '-' + namespace)
-			].join(',');
-			createDebug.enable('');
-			return namespaces;
-		}
-
-		/**
-		* Returns true if the given mode name is enabled, false otherwise.
-		*
-		* @param {String} name
-		* @return {Boolean}
-		* @api public
-		*/
-		function enabled(name) {
-			for (const skip of createDebug.skips) {
-				if (matchesTemplate(name, skip)) {
-					return false;
-				}
-			}
-
-			for (const ns of createDebug.names) {
-				if (matchesTemplate(name, ns)) {
-					return true;
-				}
-			}
-
-			return false;
-		}
-
-		/**
-		* Coerce `val`.
-		*
-		* @param {Mixed} val
-		* @return {Mixed}
-		* @api private
-		*/
-		function coerce(val) {
-			if (val instanceof Error) {
-				return val.stack || val.message;
-			}
-			return val;
-		}
-
-		/**
-		* XXX DO NOT USE. This is a temporary stub function.
-		* XXX It WILL be removed in the next major release.
-		*/
-		function destroy() {
-			console.warn('Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.');
-		}
-
-		createDebug.enable(createDebug.load());
-
-		return createDebug;
-	}
-
-	common$1 = setup;
-	return common$1;
-}
-
-/* eslint-env browser */
-
-var hasRequiredBrowser$1;
-
-function requireBrowser$1 () {
-	if (hasRequiredBrowser$1) return browser$1.exports;
-	hasRequiredBrowser$1 = 1;
-	(function (module, exports) {
-		/**
-		 * This is the web browser implementation of `debug()`.
-		 */
-
-		exports.formatArgs = formatArgs;
-		exports.save = save;
-		exports.load = load;
-		exports.useColors = useColors;
-		exports.storage = localstorage();
-		exports.destroy = (() => {
-			let warned = false;
-
-			return () => {
-				if (!warned) {
-					warned = true;
-					console.warn('Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.');
-				}
-			};
-		})();
-
-		/**
-		 * Colors.
-		 */
-
-		exports.colors = [
-			'#0000CC',
-			'#0000FF',
-			'#0033CC',
-			'#0033FF',
-			'#0066CC',
-			'#0066FF',
-			'#0099CC',
-			'#0099FF',
-			'#00CC00',
-			'#00CC33',
-			'#00CC66',
-			'#00CC99',
-			'#00CCCC',
-			'#00CCFF',
-			'#3300CC',
-			'#3300FF',
-			'#3333CC',
-			'#3333FF',
-			'#3366CC',
-			'#3366FF',
-			'#3399CC',
-			'#3399FF',
-			'#33CC00',
-			'#33CC33',
-			'#33CC66',
-			'#33CC99',
-			'#33CCCC',
-			'#33CCFF',
-			'#6600CC',
-			'#6600FF',
-			'#6633CC',
-			'#6633FF',
-			'#66CC00',
-			'#66CC33',
-			'#9900CC',
-			'#9900FF',
-			'#9933CC',
-			'#9933FF',
-			'#99CC00',
-			'#99CC33',
-			'#CC0000',
-			'#CC0033',
-			'#CC0066',
-			'#CC0099',
-			'#CC00CC',
-			'#CC00FF',
-			'#CC3300',
-			'#CC3333',
-			'#CC3366',
-			'#CC3399',
-			'#CC33CC',
-			'#CC33FF',
-			'#CC6600',
-			'#CC6633',
-			'#CC9900',
-			'#CC9933',
-			'#CCCC00',
-			'#CCCC33',
-			'#FF0000',
-			'#FF0033',
-			'#FF0066',
-			'#FF0099',
-			'#FF00CC',
-			'#FF00FF',
-			'#FF3300',
-			'#FF3333',
-			'#FF3366',
-			'#FF3399',
-			'#FF33CC',
-			'#FF33FF',
-			'#FF6600',
-			'#FF6633',
-			'#FF9900',
-			'#FF9933',
-			'#FFCC00',
-			'#FFCC33'
-		];
-
-		/**
-		 * Currently only WebKit-based Web Inspectors, Firefox >= v31,
-		 * and the Firebug extension (any Firefox version) are known
-		 * to support "%c" CSS customizations.
-		 *
-		 * TODO: add a `localStorage` variable to explicitly enable/disable colors
-		 */
-
-		// eslint-disable-next-line complexity
-		function useColors() {
-			// NB: In an Electron preload script, document will be defined but not fully
-			// initialized. Since we know we're in Chrome, we'll just detect this case
-			// explicitly
-			if (typeof window !== 'undefined' && window.process && (window.process.type === 'renderer' || window.process.__nwjs)) {
-				return true;
-			}
-
-			// Internet Explorer and Edge do not support colors.
-			if (typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/(edge|trident)\/(\d+)/)) {
-				return false;
-			}
-
-			let m;
-
-			// Is webkit? http://stackoverflow.com/a/16459606/376773
-			// document is undefined in react-native: https://github.com/facebook/react-native/pull/1632
-			// eslint-disable-next-line no-return-assign
-			return (typeof document !== 'undefined' && document.documentElement && document.documentElement.style && document.documentElement.style.WebkitAppearance) ||
-				// Is firebug? http://stackoverflow.com/a/398120/376773
-				(typeof window !== 'undefined' && window.console && (window.console.firebug || (window.console.exception && window.console.table))) ||
-				// Is firefox >= v31?
-				// https://developer.mozilla.org/en-US/docs/Tools/Web_Console#Styling_messages
-				(typeof navigator !== 'undefined' && navigator.userAgent && (m = navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/)) && parseInt(m[1], 10) >= 31) ||
-				// Double check webkit in userAgent just in case we are in a worker
-				(typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/applewebkit\/(\d+)/));
-		}
-
-		/**
-		 * Colorize log arguments if enabled.
-		 *
-		 * @api public
-		 */
-
-		function formatArgs(args) {
-			args[0] = (this.useColors ? '%c' : '') +
-				this.namespace +
-				(this.useColors ? ' %c' : ' ') +
-				args[0] +
-				(this.useColors ? '%c ' : ' ') +
-				'+' + module.exports.humanize(this.diff);
-
-			if (!this.useColors) {
-				return;
-			}
-
-			const c = 'color: ' + this.color;
-			args.splice(1, 0, c, 'color: inherit');
-
-			// The final "%c" is somewhat tricky, because there could be other
-			// arguments passed either before or after the %c, so we need to
-			// figure out the correct index to insert the CSS into
-			let index = 0;
-			let lastC = 0;
-			args[0].replace(/%[a-zA-Z%]/g, match => {
-				if (match === '%%') {
-					return;
-				}
-				index++;
-				if (match === '%c') {
-					// We only are interested in the *last* %c
-					// (the user may have provided their own)
-					lastC = index;
-				}
-			});
-
-			args.splice(lastC, 0, c);
-		}
-
-		/**
-		 * Invokes `console.debug()` when available.
-		 * No-op when `console.debug` is not a "function".
-		 * If `console.debug` is not available, falls back
-		 * to `console.log`.
-		 *
-		 * @api public
-		 */
-		exports.log = console.debug || console.log || (() => {});
-
-		/**
-		 * Save `namespaces`.
-		 *
-		 * @param {String} namespaces
-		 * @api private
-		 */
-		function save(namespaces) {
-			try {
-				if (namespaces) {
-					exports.storage.setItem('debug', namespaces);
-				} else {
-					exports.storage.removeItem('debug');
-				}
-			} catch (error) {
-				// Swallow
-				// XXX (@Qix-) should we be logging these?
-			}
-		}
-
-		/**
-		 * Load `namespaces`.
-		 *
-		 * @return {String} returns the previously persisted debug modes
-		 * @api private
-		 */
-		function load() {
-			let r;
-			try {
-				r = exports.storage.getItem('debug') || exports.storage.getItem('DEBUG') ;
-			} catch (error) {
-				// Swallow
-				// XXX (@Qix-) should we be logging these?
-			}
-
-			// If debug isn't set in LS, and we're in Electron, try to load $DEBUG
-			if (!r && typeof process !== 'undefined' && 'env' in process) {
-				r = process.env.DEBUG;
-			}
-
-			return r;
-		}
-
-		/**
-		 * Localstorage attempts to return the localstorage.
-		 *
-		 * This is necessary because safari throws
-		 * when a user disables cookies/localstorage
-		 * and you attempt to access it.
-		 *
-		 * @return {LocalStorage}
-		 * @api private
-		 */
-
-		function localstorage() {
-			try {
-				// TVMLKit (Apple TV JS Runtime) does not have a window object, just localStorage in the global context
-				// The Browser also has localStorage in the global context.
-				return localStorage;
-			} catch (error) {
-				// Swallow
-				// XXX (@Qix-) should we be logging these?
-			}
-		}
-
-		module.exports = requireCommon$1()(exports);
-
-		const {formatters} = module.exports;
-
-		/**
-		 * Map %j to `JSON.stringify()`, since no Web Inspectors do that by default.
-		 */
-
-		formatters.j = function (v) {
-			try {
-				return JSON.stringify(v);
-			} catch (error) {
-				return '[UnexpectedJSONParseError]: ' + error.message;
-			}
-		}; 
-	} (browser$1, browser$1.exports));
-	return browser$1.exports;
-}
-
-var node$1 = {exports: {}};
-
-/**
- * Module dependencies.
- */
-
-var hasRequiredNode$1;
-
-function requireNode$1 () {
-	if (hasRequiredNode$1) return node$1.exports;
-	hasRequiredNode$1 = 1;
-	(function (module, exports) {
-		const tty = require$$0$9;
-		const util = require$$1$1;
-
-		/**
-		 * This is the Node.js implementation of `debug()`.
-		 */
-
-		exports.init = init;
-		exports.log = log;
-		exports.formatArgs = formatArgs;
-		exports.save = save;
-		exports.load = load;
-		exports.useColors = useColors;
-		exports.destroy = util.deprecate(
-			() => {},
-			'Instance method `debug.destroy()` is deprecated and no longer does anything. It will be removed in the next major version of `debug`.'
-		);
-
-		/**
-		 * Colors.
-		 */
-
-		exports.colors = [6, 2, 3, 4, 5, 1];
-
-		try {
-			// Optional dependency (as in, doesn't need to be installed, NOT like optionalDependencies in package.json)
-			// eslint-disable-next-line import/no-extraneous-dependencies
-			const supportsColor = requireSupportsColor();
-
-			if (supportsColor && (supportsColor.stderr || supportsColor).level >= 2) {
-				exports.colors = [
-					20,
-					21,
-					26,
-					27,
-					32,
-					33,
-					38,
-					39,
-					40,
-					41,
-					42,
-					43,
-					44,
-					45,
-					56,
-					57,
-					62,
-					63,
-					68,
-					69,
-					74,
-					75,
-					76,
-					77,
-					78,
-					79,
-					80,
-					81,
-					92,
-					93,
-					98,
-					99,
-					112,
-					113,
-					128,
-					129,
-					134,
-					135,
-					148,
-					149,
-					160,
-					161,
-					162,
-					163,
-					164,
-					165,
-					166,
-					167,
-					168,
-					169,
-					170,
-					171,
-					172,
-					173,
-					178,
-					179,
-					184,
-					185,
-					196,
-					197,
-					198,
-					199,
-					200,
-					201,
-					202,
-					203,
-					204,
-					205,
-					206,
-					207,
-					208,
-					209,
-					214,
-					215,
-					220,
-					221
-				];
-			}
-		} catch (error) {
-			// Swallow - we only care if `supports-color` is available; it doesn't have to be.
-		}
-
-		/**
-		 * Build up the default `inspectOpts` object from the environment variables.
-		 *
-		 *   $ DEBUG_COLORS=no DEBUG_DEPTH=10 DEBUG_SHOW_HIDDEN=enabled node script.js
-		 */
-
-		exports.inspectOpts = Object.keys(process.env).filter(key => {
-			return /^debug_/i.test(key);
-		}).reduce((obj, key) => {
-			// Camel-case
-			const prop = key
-				.substring(6)
-				.toLowerCase()
-				.replace(/_([a-z])/g, (_, k) => {
-					return k.toUpperCase();
-				});
-
-			// Coerce string value into JS value
-			let val = process.env[key];
-			if (/^(yes|on|true|enabled)$/i.test(val)) {
-				val = true;
-			} else if (/^(no|off|false|disabled)$/i.test(val)) {
-				val = false;
-			} else if (val === 'null') {
-				val = null;
-			} else {
-				val = Number(val);
-			}
-
-			obj[prop] = val;
-			return obj;
-		}, {});
-
-		/**
-		 * Is stdout a TTY? Colored output is enabled when `true`.
-		 */
-
-		function useColors() {
-			return 'colors' in exports.inspectOpts ?
-				Boolean(exports.inspectOpts.colors) :
-				tty.isatty(process.stderr.fd);
-		}
-
-		/**
-		 * Adds ANSI color escape codes if enabled.
-		 *
-		 * @api public
-		 */
-
-		function formatArgs(args) {
-			const {namespace: name, useColors} = this;
-
-			if (useColors) {
-				const c = this.color;
-				const colorCode = '\u001B[3' + (c < 8 ? c : '8;5;' + c);
-				const prefix = `  ${colorCode};1m${name} \u001B[0m`;
-
-				args[0] = prefix + args[0].split('\n').join('\n' + prefix);
-				args.push(colorCode + 'm+' + module.exports.humanize(this.diff) + '\u001B[0m');
-			} else {
-				args[0] = getDate() + name + ' ' + args[0];
-			}
-		}
-
-		function getDate() {
-			if (exports.inspectOpts.hideDate) {
-				return '';
-			}
-			return new Date().toISOString() + ' ';
-		}
-
-		/**
-		 * Invokes `util.formatWithOptions()` with the specified arguments and writes to stderr.
-		 */
-
-		function log(...args) {
-			return process.stderr.write(util.formatWithOptions(exports.inspectOpts, ...args) + '\n');
-		}
-
-		/**
-		 * Save `namespaces`.
-		 *
-		 * @param {String} namespaces
-		 * @api private
-		 */
-		function save(namespaces) {
-			if (namespaces) {
-				process.env.DEBUG = namespaces;
-			} else {
-				// If you set a process.env field to null or undefined, it gets cast to the
-				// string 'null' or 'undefined'. Just delete instead.
-				delete process.env.DEBUG;
-			}
-		}
-
-		/**
-		 * Load `namespaces`.
-		 *
-		 * @return {String} returns the previously persisted debug modes
-		 * @api private
-		 */
-
-		function load() {
-			return process.env.DEBUG;
-		}
-
-		/**
-		 * Init logic for `debug` instances.
-		 *
-		 * Create a new `inspectOpts` object in case `useColors` is set
-		 * differently for a particular `debug` instance.
-		 */
-
-		function init(debug) {
-			debug.inspectOpts = {};
-
-			const keys = Object.keys(exports.inspectOpts);
-			for (let i = 0; i < keys.length; i++) {
-				debug.inspectOpts[keys[i]] = exports.inspectOpts[keys[i]];
-			}
-		}
-
-		module.exports = requireCommon$1()(exports);
-
-		const {formatters} = module.exports;
-
-		/**
-		 * Map %o to `util.inspect()`, all on a single line.
-		 */
-
-		formatters.o = function (v) {
-			this.inspectOpts.colors = this.useColors;
-			return util.inspect(v, this.inspectOpts)
-				.split('\n')
-				.map(str => str.trim())
-				.join(' ');
-		};
-
-		/**
-		 * Map %O to `util.inspect()`, allowing multiple lines if needed.
-		 */
-
-		formatters.O = function (v) {
-			this.inspectOpts.colors = this.useColors;
-			return util.inspect(v, this.inspectOpts);
-		}; 
-	} (node$1, node$1.exports));
-	return node$1.exports;
-}
-
-/**
- * Detect Electron renderer / nwjs process, which is node, but we should
- * treat as a browser.
- */
-
-if (typeof process === 'undefined' || process.type === 'renderer' || process.browser === true || process.__nwjs) {
-	src$2.exports = requireBrowser$1();
-} else {
-	src$2.exports = requireNode$1();
-}
-
-var srcExports = src$2.exports;
-
-var promisify$1 = {};
-
-Object.defineProperty(promisify$1, "__esModule", { value: true });
-function promisify(fn) {
-    return function (req, opts) {
-        return new Promise((resolve, reject) => {
-            fn.call(this, req, opts, (err, rtn) => {
-                if (err) {
-                    reject(err);
-                }
-                else {
-                    resolve(rtn);
-                }
-            });
-        });
-    };
-}
-promisify$1.default = promisify;
-
-var __importDefault$3 = (commonjsGlobal && commonjsGlobal.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-const events_1 = require$$4$1;
-const debug_1$3 = __importDefault$3(srcExports);
-const promisify_1 = __importDefault$3(promisify$1);
-const debug$4 = debug_1$3.default('agent-base');
-function isAgent(v) {
-    return Boolean(v) && typeof v.addRequest === 'function';
-}
-function isSecureEndpoint() {
-    const { stack } = new Error();
-    if (typeof stack !== 'string')
-        return false;
-    return stack.split('\n').some(l => l.indexOf('(https.js:') !== -1 || l.indexOf('node:https:') !== -1);
-}
-function createAgent(callback, opts) {
-    return new createAgent.Agent(callback, opts);
-}
-(function (createAgent) {
-    /**
-     * Base `http.Agent` implementation.
-     * No pooling/keep-alive is implemented by default.
-     *
-     * @param {Function} callback
-     * @api public
-     */
-    class Agent extends events_1.EventEmitter {
-        constructor(callback, _opts) {
-            super();
-            let opts = _opts;
-            if (typeof callback === 'function') {
-                this.callback = callback;
-            }
-            else if (callback) {
-                opts = callback;
-            }
-            // Timeout for the socket to be returned from the callback
-            this.timeout = null;
-            if (opts && typeof opts.timeout === 'number') {
-                this.timeout = opts.timeout;
-            }
-            // These aren't actually used by `agent-base`, but are required
-            // for the TypeScript definition files in `@types/node` :/
-            this.maxFreeSockets = 1;
-            this.maxSockets = 1;
-            this.maxTotalSockets = Infinity;
-            this.sockets = {};
-            this.freeSockets = {};
-            this.requests = {};
-            this.options = {};
-        }
-        get defaultPort() {
-            if (typeof this.explicitDefaultPort === 'number') {
-                return this.explicitDefaultPort;
-            }
-            return isSecureEndpoint() ? 443 : 80;
-        }
-        set defaultPort(v) {
-            this.explicitDefaultPort = v;
-        }
-        get protocol() {
-            if (typeof this.explicitProtocol === 'string') {
-                return this.explicitProtocol;
-            }
-            return isSecureEndpoint() ? 'https:' : 'http:';
-        }
-        set protocol(v) {
-            this.explicitProtocol = v;
-        }
-        callback(req, opts, fn) {
-            throw new Error('"agent-base" has no default implementation, you must subclass and override `callback()`');
-        }
-        /**
-         * Called by node-core's "_http_client.js" module when creating
-         * a new HTTP request with this Agent instance.
-         *
-         * @api public
-         */
-        addRequest(req, _opts) {
-            const opts = Object.assign({}, _opts);
-            if (typeof opts.secureEndpoint !== 'boolean') {
-                opts.secureEndpoint = isSecureEndpoint();
-            }
-            if (opts.host == null) {
-                opts.host = 'localhost';
-            }
-            if (opts.port == null) {
-                opts.port = opts.secureEndpoint ? 443 : 80;
-            }
-            if (opts.protocol == null) {
-                opts.protocol = opts.secureEndpoint ? 'https:' : 'http:';
-            }
-            if (opts.host && opts.path) {
-                // If both a `host` and `path` are specified then it's most
-                // likely the result of a `url.parse()` call... we need to
-                // remove the `path` portion so that `net.connect()` doesn't
-                // attempt to open that as a unix socket file.
-                delete opts.path;
-            }
-            delete opts.agent;
-            delete opts.hostname;
-            delete opts._defaultAgent;
-            delete opts.defaultPort;
-            delete opts.createConnection;
-            // Hint to use "Connection: close"
-            // XXX: non-documented `http` module API :(
-            req._last = true;
-            req.shouldKeepAlive = false;
-            let timedOut = false;
-            let timeoutId = null;
-            const timeoutMs = opts.timeout || this.timeout;
-            const onerror = (err) => {
-                if (req._hadError)
-                    return;
-                req.emit('error', err);
-                // For Safety. Some additional errors might fire later on
-                // and we need to make sure we don't double-fire the error event.
-                req._hadError = true;
-            };
-            const ontimeout = () => {
-                timeoutId = null;
-                timedOut = true;
-                const err = new Error(`A "socket" was not created for HTTP request before ${timeoutMs}ms`);
-                err.code = 'ETIMEOUT';
-                onerror(err);
-            };
-            const callbackError = (err) => {
-                if (timedOut)
-                    return;
-                if (timeoutId !== null) {
-                    clearTimeout(timeoutId);
-                    timeoutId = null;
-                }
-                onerror(err);
-            };
-            const onsocket = (socket) => {
-                if (timedOut)
-                    return;
-                if (timeoutId != null) {
-                    clearTimeout(timeoutId);
-                    timeoutId = null;
-                }
-                if (isAgent(socket)) {
-                    // `socket` is actually an `http.Agent` instance, so
-                    // relinquish responsibility for this `req` to the Agent
-                    // from here on
-                    debug$4('Callback returned another Agent instance %o', socket.constructor.name);
-                    socket.addRequest(req, opts);
-                    return;
-                }
-                if (socket) {
-                    socket.once('free', () => {
-                        this.freeSocket(socket, opts);
-                    });
-                    req.onSocket(socket);
-                    return;
-                }
-                const err = new Error(`no Duplex stream was returned to agent-base for \`${req.method} ${req.path}\``);
-                onerror(err);
-            };
-            if (typeof this.callback !== 'function') {
-                onerror(new Error('`callback` is not defined'));
-                return;
-            }
-            if (!this.promisifiedCallback) {
-                if (this.callback.length >= 3) {
-                    debug$4('Converting legacy callback function to promise');
-                    this.promisifiedCallback = promisify_1.default(this.callback);
-                }
-                else {
-                    this.promisifiedCallback = this.callback;
-                }
-            }
-            if (typeof timeoutMs === 'number' && timeoutMs > 0) {
-                timeoutId = setTimeout(ontimeout, timeoutMs);
-            }
-            if ('port' in opts && typeof opts.port !== 'number') {
-                opts.port = Number(opts.port);
-            }
-            try {
-                debug$4('Resolving socket for %o request: %o', opts.protocol, `${req.method} ${req.path}`);
-                Promise.resolve(this.promisifiedCallback(req, opts)).then(onsocket, callbackError);
-            }
-            catch (err) {
-                Promise.reject(err).catch(callbackError);
-            }
-        }
-        freeSocket(socket, opts) {
-            debug$4('Freeing socket %o %o', socket.constructor.name, opts);
-            socket.destroy();
-        }
-        destroy() {
-            debug$4('Destroying agent %o', this.constructor.name);
-        }
-    }
-    createAgent.Agent = Agent;
-    // So that `instanceof` works correctly
-    createAgent.prototype = createAgent.Agent.prototype;
-})(createAgent || (createAgent = {}));
-var src$1 = createAgent;
-
-var parseProxyResponse$1 = {};
-
-var __importDefault$2 = (commonjsGlobal && commonjsGlobal.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(parseProxyResponse$1, "__esModule", { value: true });
-const debug_1$2 = __importDefault$2(srcExports$1);
-const debug$3 = debug_1$2.default('https-proxy-agent:parse-proxy-response');
-function parseProxyResponse(socket) {
-    return new Promise((resolve, reject) => {
-        // we need to buffer any HTTP traffic that happens with the proxy before we get
-        // the CONNECT response, so that if the response is anything other than an "200"
-        // response code, then we can re-play the "data" events on the socket once the
-        // HTTP parser is hooked up...
-        let buffersLength = 0;
-        const buffers = [];
-        function read() {
-            const b = socket.read();
-            if (b)
-                ondata(b);
-            else
-                socket.once('readable', read);
-        }
-        function cleanup() {
-            socket.removeListener('end', onend);
-            socket.removeListener('error', onerror);
-            socket.removeListener('close', onclose);
-            socket.removeListener('readable', read);
-        }
-        function onclose(err) {
-            debug$3('onclose had error %o', err);
-        }
-        function onend() {
-            debug$3('onend');
-        }
-        function onerror(err) {
-            cleanup();
-            debug$3('onerror %o', err);
-            reject(err);
-        }
-        function ondata(b) {
-            buffers.push(b);
-            buffersLength += b.length;
-            const buffered = Buffer.concat(buffers, buffersLength);
-            const endOfHeaders = buffered.indexOf('\r\n\r\n');
-            if (endOfHeaders === -1) {
-                // keep buffering
-                debug$3('have not received end of HTTP headers yet...');
-                read();
-                return;
-            }
-            const firstLine = buffered.toString('ascii', 0, buffered.indexOf('\r\n'));
-            const statusCode = +firstLine.split(' ')[1];
-            debug$3('got proxy server response: %o', firstLine);
-            resolve({
-                statusCode,
-                buffered
-            });
-        }
-        socket.on('error', onerror);
-        socket.on('close', onclose);
-        socket.on('end', onend);
-        read();
-    });
-}
-parseProxyResponse$1.default = parseProxyResponse;
-
-var __awaiter = (commonjsGlobal && commonjsGlobal.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
-var __importDefault$1 = (commonjsGlobal && commonjsGlobal.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(agent, "__esModule", { value: true });
-const net_1 = __importDefault$1(require$$0$a);
-const tls_1 = __importDefault$1(require$$1$2);
-const url_1 = __importDefault$1(require$$5$5);
-const assert_1 = __importDefault$1(require$$5$4);
-const debug_1$1 = __importDefault$1(srcExports$1);
-const agent_base_1 = src$1;
-const parse_proxy_response_1 = __importDefault$1(parseProxyResponse$1);
-const debug$2 = debug_1$1.default('https-proxy-agent:agent');
-/**
- * The `HttpsProxyAgent` implements an HTTP Agent subclass that connects to
- * the specified "HTTP(s) proxy server" in order to proxy HTTPS requests.
- *
- * Outgoing HTTP requests are first tunneled through the proxy server using the
- * `CONNECT` HTTP request method to establish a connection to the proxy server,
- * and then the proxy server connects to the destination target and issues the
- * HTTP request from the proxy server.
- *
- * `https:` requests have their socket connection upgraded to TLS once
- * the connection to the proxy server has been established.
- *
- * @api public
- */
-let HttpsProxyAgent$1 = class HttpsProxyAgent extends agent_base_1.Agent {
-    constructor(_opts) {
-        let opts;
-        if (typeof _opts === 'string') {
-            opts = url_1.default.parse(_opts);
-        }
-        else {
-            opts = _opts;
-        }
-        if (!opts) {
-            throw new Error('an HTTP(S) proxy server `host` and `port` must be specified!');
-        }
-        debug$2('creating new HttpsProxyAgent instance: %o', opts);
-        super(opts);
-        const proxy = Object.assign({}, opts);
-        // If `true`, then connect to the proxy server over TLS.
-        // Defaults to `false`.
-        this.secureProxy = opts.secureProxy || isHTTPS(proxy.protocol);
-        // Prefer `hostname` over `host`, and set the `port` if needed.
-        proxy.host = proxy.hostname || proxy.host;
-        if (typeof proxy.port === 'string') {
-            proxy.port = parseInt(proxy.port, 10);
-        }
-        if (!proxy.port && proxy.host) {
-            proxy.port = this.secureProxy ? 443 : 80;
-        }
-        // ALPN is supported by Node.js >= v5.
-        // attempt to negotiate http/1.1 for proxy servers that support http/2
-        if (this.secureProxy && !('ALPNProtocols' in proxy)) {
-            proxy.ALPNProtocols = ['http 1.1'];
-        }
-        if (proxy.host && proxy.path) {
-            // If both a `host` and `path` are specified then it's most likely
-            // the result of a `url.parse()` call... we need to remove the
-            // `path` portion so that `net.connect()` doesn't attempt to open
-            // that as a Unix socket file.
-            delete proxy.path;
-            delete proxy.pathname;
-        }
-        this.proxy = proxy;
-    }
-    /**
-     * Called when the node-core HTTP client library is creating a
-     * new HTTP request.
-     *
-     * @api protected
-     */
-    callback(req, opts) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const { proxy, secureProxy } = this;
-            // Create a socket connection to the proxy server.
-            let socket;
-            if (secureProxy) {
-                debug$2('Creating `tls.Socket`: %o', proxy);
-                socket = tls_1.default.connect(proxy);
-            }
-            else {
-                debug$2('Creating `net.Socket`: %o', proxy);
-                socket = net_1.default.connect(proxy);
-            }
-            const headers = Object.assign({}, proxy.headers);
-            const hostname = `${opts.host}:${opts.port}`;
-            let payload = `CONNECT ${hostname} HTTP/1.1\r\n`;
-            // Inject the `Proxy-Authorization` header if necessary.
-            if (proxy.auth) {
-                headers['Proxy-Authorization'] = `Basic ${Buffer.from(proxy.auth).toString('base64')}`;
-            }
-            // The `Host` header should only include the port
-            // number when it is not the default port.
-            let { host, port, secureEndpoint } = opts;
-            if (!isDefaultPort(port, secureEndpoint)) {
-                host += `:${port}`;
-            }
-            headers.Host = host;
-            headers.Connection = 'close';
-            for (const name of Object.keys(headers)) {
-                payload += `${name}: ${headers[name]}\r\n`;
-            }
-            const proxyResponsePromise = parse_proxy_response_1.default(socket);
-            socket.write(`${payload}\r\n`);
-            const { statusCode, buffered } = yield proxyResponsePromise;
-            if (statusCode === 200) {
-                req.once('socket', resume);
-                if (opts.secureEndpoint) {
-                    // The proxy is connecting to a TLS server, so upgrade
-                    // this socket connection to a TLS connection.
-                    debug$2('Upgrading socket connection to TLS');
-                    const servername = opts.servername || opts.host;
-                    return tls_1.default.connect(Object.assign(Object.assign({}, omit(opts, 'host', 'hostname', 'path', 'port')), { socket,
-                        servername }));
-                }
-                return socket;
-            }
-            // Some other status code that's not 200... need to re-play the HTTP
-            // header "data" events onto the socket once the HTTP machinery is
-            // attached so that the node core `http` can parse and handle the
-            // error status code.
-            // Close the original socket, and a new "fake" socket is returned
-            // instead, so that the proxy doesn't get the HTTP request
-            // written to it (which may contain `Authorization` headers or other
-            // sensitive data).
-            //
-            // See: https://hackerone.com/reports/541502
-            socket.destroy();
-            const fakeSocket = new net_1.default.Socket({ writable: false });
-            fakeSocket.readable = true;
-            // Need to wait for the "socket" event to re-play the "data" events.
-            req.once('socket', (s) => {
-                debug$2('replaying proxy buffer for failed request');
-                assert_1.default(s.listenerCount('data') > 0);
-                // Replay the "buffered" Buffer onto the fake `socket`, since at
-                // this point the HTTP module machinery has been hooked up for
-                // the user.
-                s.push(buffered);
-                s.push(null);
-            });
-            return fakeSocket;
-        });
-    }
-};
-agent.default = HttpsProxyAgent$1;
-function resume(socket) {
-    socket.resume();
-}
-function isDefaultPort(port, secure) {
-    return Boolean((!secure && port === 80) || (secure && port === 443));
-}
-function isHTTPS(protocol) {
-    return typeof protocol === 'string' ? /^https:?$/i.test(protocol) : false;
-}
-function omit(obj, ...keys) {
-    const ret = {};
-    let key;
-    for (key in obj) {
-        if (!keys.includes(key)) {
-            ret[key] = obj[key];
-        }
-    }
-    return ret;
-}
-
-var __importDefault = (commonjsGlobal && commonjsGlobal.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-const agent_1 = __importDefault(agent);
-function createHttpsProxyAgent(opts) {
-    return new agent_1.default(opts);
-}
-(function (createHttpsProxyAgent) {
-    createHttpsProxyAgent.HttpsProxyAgent = agent_1.default;
-    createHttpsProxyAgent.prototype = agent_1.default.prototype;
-})(createHttpsProxyAgent || (createHttpsProxyAgent = {}));
-var dist = createHttpsProxyAgent;
-
-
-var HttpsProxyAgent = /*@__PURE__*/getDefaultExportFromCjs(dist);
-
-var followRedirects$1 = {exports: {}};
-
-var src = {exports: {}};
+var src$1 = {exports: {}};
 
 var browser = {exports: {}};
 
@@ -54320,7 +51673,7 @@ function requireMs () {
 	 * @api public
 	 */
 
-	ms = function(val, options) {
+	ms = function (val, options) {
 	  options = options || {};
 	  var type = typeof val;
 	  if (type === 'string' && val.length > 0) {
@@ -54633,24 +51986,62 @@ function requireCommon () {
 			createDebug.names = [];
 			createDebug.skips = [];
 
-			let i;
-			const split = (typeof namespaces === 'string' ? namespaces : '').split(/[\s,]+/);
-			const len = split.length;
+			const split = (typeof namespaces === 'string' ? namespaces : '')
+				.trim()
+				.replace(/\s+/g, ',')
+				.split(',')
+				.filter(Boolean);
 
-			for (i = 0; i < len; i++) {
-				if (!split[i]) {
-					// ignore empty strings
-					continue;
-				}
-
-				namespaces = split[i].replace(/\*/g, '.*?');
-
-				if (namespaces[0] === '-') {
-					createDebug.skips.push(new RegExp('^' + namespaces.slice(1) + '$'));
+			for (const ns of split) {
+				if (ns[0] === '-') {
+					createDebug.skips.push(ns.slice(1));
 				} else {
-					createDebug.names.push(new RegExp('^' + namespaces + '$'));
+					createDebug.names.push(ns);
 				}
 			}
+		}
+
+		/**
+		 * Checks if the given string matches a namespace template, honoring
+		 * asterisks as wildcards.
+		 *
+		 * @param {String} search
+		 * @param {String} template
+		 * @return {Boolean}
+		 */
+		function matchesTemplate(search, template) {
+			let searchIndex = 0;
+			let templateIndex = 0;
+			let starIndex = -1;
+			let matchIndex = 0;
+
+			while (searchIndex < search.length) {
+				if (templateIndex < template.length && (template[templateIndex] === search[searchIndex] || template[templateIndex] === '*')) {
+					// Match character or proceed with wildcard
+					if (template[templateIndex] === '*') {
+						starIndex = templateIndex;
+						matchIndex = searchIndex;
+						templateIndex++; // Skip the '*'
+					} else {
+						searchIndex++;
+						templateIndex++;
+					}
+				} else if (starIndex !== -1) { // eslint-disable-line no-negated-condition
+					// Backtrack to the last '*' and try to match more characters
+					templateIndex = starIndex + 1;
+					matchIndex++;
+					searchIndex = matchIndex;
+				} else {
+					return false; // No match
+				}
+			}
+
+			// Handle trailing '*' in template
+			while (templateIndex < template.length && template[templateIndex] === '*') {
+				templateIndex++;
+			}
+
+			return templateIndex === template.length;
 		}
 
 		/**
@@ -54661,8 +52052,8 @@ function requireCommon () {
 		*/
 		function disable() {
 			const namespaces = [
-				...createDebug.names.map(toNamespace),
-				...createDebug.skips.map(toNamespace).map(namespace => '-' + namespace)
+				...createDebug.names,
+				...createDebug.skips.map(namespace => '-' + namespace)
 			].join(',');
 			createDebug.enable('');
 			return namespaces;
@@ -54676,39 +52067,19 @@ function requireCommon () {
 		* @api public
 		*/
 		function enabled(name) {
-			if (name[name.length - 1] === '*') {
-				return true;
-			}
-
-			let i;
-			let len;
-
-			for (i = 0, len = createDebug.skips.length; i < len; i++) {
-				if (createDebug.skips[i].test(name)) {
+			for (const skip of createDebug.skips) {
+				if (matchesTemplate(name, skip)) {
 					return false;
 				}
 			}
 
-			for (i = 0, len = createDebug.names.length; i < len; i++) {
-				if (createDebug.names[i].test(name)) {
+			for (const ns of createDebug.names) {
+				if (matchesTemplate(name, ns)) {
 					return true;
 				}
 			}
 
 			return false;
-		}
-
-		/**
-		* Convert regexp to namespace
-		*
-		* @param {RegExp} regxep
-		* @return {String} namespace
-		* @api private
-		*/
-		function toNamespace(regexp) {
-			return regexp.toString()
-				.substring(2, regexp.toString().length - 2)
-				.replace(/\.\*\?$/, '*');
 		}
 
 		/**
@@ -54875,14 +52246,17 @@ function requireBrowser () {
 				return false;
 			}
 
+			let m;
+
 			// Is webkit? http://stackoverflow.com/a/16459606/376773
 			// document is undefined in react-native: https://github.com/facebook/react-native/pull/1632
+			// eslint-disable-next-line no-return-assign
 			return (typeof document !== 'undefined' && document.documentElement && document.documentElement.style && document.documentElement.style.WebkitAppearance) ||
 				// Is firebug? http://stackoverflow.com/a/398120/376773
 				(typeof window !== 'undefined' && window.console && (window.console.firebug || (window.console.exception && window.console.table))) ||
 				// Is firefox >= v31?
 				// https://developer.mozilla.org/en-US/docs/Tools/Web_Console#Styling_messages
-				(typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/) && parseInt(RegExp.$1, 10) >= 31) ||
+				(typeof navigator !== 'undefined' && navigator.userAgent && (m = navigator.userAgent.toLowerCase().match(/firefox\/(\d+)/)) && parseInt(m[1], 10) >= 31) ||
 				// Double check webkit in userAgent just in case we are in a worker
 				(typeof navigator !== 'undefined' && navigator.userAgent && navigator.userAgent.toLowerCase().match(/applewebkit\/(\d+)/));
 		}
@@ -54966,7 +52340,7 @@ function requireBrowser () {
 		function load() {
 			let r;
 			try {
-				r = exports.storage.getItem('debug');
+				r = exports.storage.getItem('debug') || exports.storage.getItem('DEBUG') ;
 			} catch (error) {
 				// Swallow
 				// XXX (@Qix-) should we be logging these?
@@ -55023,6 +52397,165 @@ function requireBrowser () {
 
 var node = {exports: {}};
 
+var hasFlag;
+var hasRequiredHasFlag;
+
+function requireHasFlag () {
+	if (hasRequiredHasFlag) return hasFlag;
+	hasRequiredHasFlag = 1;
+
+	hasFlag = (flag, argv = process.argv) => {
+		const prefix = flag.startsWith('-') ? '' : (flag.length === 1 ? '-' : '--');
+		const position = argv.indexOf(prefix + flag);
+		const terminatorPosition = argv.indexOf('--');
+		return position !== -1 && (terminatorPosition === -1 || position < terminatorPosition);
+	};
+	return hasFlag;
+}
+
+var supportsColor_1;
+var hasRequiredSupportsColor;
+
+function requireSupportsColor () {
+	if (hasRequiredSupportsColor) return supportsColor_1;
+	hasRequiredSupportsColor = 1;
+	const os = require$$0$1;
+	const tty = require$$1$9;
+	const hasFlag = requireHasFlag();
+
+	const {env} = process;
+
+	let forceColor;
+	if (hasFlag('no-color') ||
+		hasFlag('no-colors') ||
+		hasFlag('color=false') ||
+		hasFlag('color=never')) {
+		forceColor = 0;
+	} else if (hasFlag('color') ||
+		hasFlag('colors') ||
+		hasFlag('color=true') ||
+		hasFlag('color=always')) {
+		forceColor = 1;
+	}
+
+	if ('FORCE_COLOR' in env) {
+		if (env.FORCE_COLOR === 'true') {
+			forceColor = 1;
+		} else if (env.FORCE_COLOR === 'false') {
+			forceColor = 0;
+		} else {
+			forceColor = env.FORCE_COLOR.length === 0 ? 1 : Math.min(parseInt(env.FORCE_COLOR, 10), 3);
+		}
+	}
+
+	function translateLevel(level) {
+		if (level === 0) {
+			return false;
+		}
+
+		return {
+			level,
+			hasBasic: true,
+			has256: level >= 2,
+			has16m: level >= 3
+		};
+	}
+
+	function supportsColor(haveStream, streamIsTTY) {
+		if (forceColor === 0) {
+			return 0;
+		}
+
+		if (hasFlag('color=16m') ||
+			hasFlag('color=full') ||
+			hasFlag('color=truecolor')) {
+			return 3;
+		}
+
+		if (hasFlag('color=256')) {
+			return 2;
+		}
+
+		if (haveStream && !streamIsTTY && forceColor === undefined) {
+			return 0;
+		}
+
+		const min = forceColor || 0;
+
+		if (env.TERM === 'dumb') {
+			return min;
+		}
+
+		if (process.platform === 'win32') {
+			// Windows 10 build 10586 is the first Windows release that supports 256 colors.
+			// Windows 10 build 14931 is the first release that supports 16m/TrueColor.
+			const osRelease = os.release().split('.');
+			if (
+				Number(osRelease[0]) >= 10 &&
+				Number(osRelease[2]) >= 10586
+			) {
+				return Number(osRelease[2]) >= 14931 ? 3 : 2;
+			}
+
+			return 1;
+		}
+
+		if ('CI' in env) {
+			if (['TRAVIS', 'CIRCLECI', 'APPVEYOR', 'GITLAB_CI', 'GITHUB_ACTIONS', 'BUILDKITE'].some(sign => sign in env) || env.CI_NAME === 'codeship') {
+				return 1;
+			}
+
+			return min;
+		}
+
+		if ('TEAMCITY_VERSION' in env) {
+			return /^(9\.(0*[1-9]\d*)\.|\d{2,}\.)/.test(env.TEAMCITY_VERSION) ? 1 : 0;
+		}
+
+		if (env.COLORTERM === 'truecolor') {
+			return 3;
+		}
+
+		if ('TERM_PROGRAM' in env) {
+			const version = parseInt((env.TERM_PROGRAM_VERSION || '').split('.')[0], 10);
+
+			switch (env.TERM_PROGRAM) {
+				case 'iTerm.app':
+					return version >= 3 ? 3 : 2;
+				case 'Apple_Terminal':
+					return 2;
+				// No default
+			}
+		}
+
+		if (/-256(color)?$/i.test(env.TERM)) {
+			return 2;
+		}
+
+		if (/^screen|^xterm|^vt100|^vt220|^rxvt|color|ansi|cygwin|linux/i.test(env.TERM)) {
+			return 1;
+		}
+
+		if ('COLORTERM' in env) {
+			return 1;
+		}
+
+		return min;
+	}
+
+	function getSupportLevel(stream) {
+		const level = supportsColor(stream, stream && stream.isTTY);
+		return translateLevel(level);
+	}
+
+	supportsColor_1 = {
+		supportsColor: getSupportLevel,
+		stdout: translateLevel(supportsColor(true, tty.isatty(1))),
+		stderr: translateLevel(supportsColor(true, tty.isatty(2)))
+	};
+	return supportsColor_1;
+}
+
 /**
  * Module dependencies.
  */
@@ -55033,7 +52566,7 @@ function requireNode () {
 	if (hasRequiredNode) return node.exports;
 	hasRequiredNode = 1;
 	(function (module, exports) {
-		const tty = require$$0$9;
+		const tty = require$$1$9;
 		const util = require$$1$1;
 
 		/**
@@ -55218,11 +52751,11 @@ function requireNode () {
 		}
 
 		/**
-		 * Invokes `util.format()` with the specified arguments and writes to stderr.
+		 * Invokes `util.formatWithOptions()` with the specified arguments and writes to stderr.
 		 */
 
 		function log(...args) {
-			return process.stderr.write(util.format(...args) + '\n');
+			return process.stderr.write(util.formatWithOptions(exports.inspectOpts, ...args) + '\n');
 		}
 
 		/**
@@ -55301,18 +52834,495 @@ function requireNode () {
  * treat as a browser.
  */
 
-var hasRequiredSrc;
-
-function requireSrc () {
-	if (hasRequiredSrc) return src.exports;
-	hasRequiredSrc = 1;
-	if (typeof process === 'undefined' || process.type === 'renderer' || process.browser === true || process.__nwjs) {
-		src.exports = requireBrowser();
-	} else {
-		src.exports = requireNode();
-	}
-	return src.exports;
+if (typeof process === 'undefined' || process.type === 'renderer' || process.browser === true || process.__nwjs) {
+	src$1.exports = requireBrowser();
+} else {
+	src$1.exports = requireNode();
 }
+
+var srcExports = src$1.exports;
+
+var promisify$1 = {};
+
+Object.defineProperty(promisify$1, "__esModule", { value: true });
+function promisify(fn) {
+    return function (req, opts) {
+        return new Promise((resolve, reject) => {
+            fn.call(this, req, opts, (err, rtn) => {
+                if (err) {
+                    reject(err);
+                }
+                else {
+                    resolve(rtn);
+                }
+            });
+        });
+    };
+}
+promisify$1.default = promisify;
+
+var __importDefault$3 = (commonjsGlobal && commonjsGlobal.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+const events_1 = require$$4$1;
+const debug_1$3 = __importDefault$3(srcExports);
+const promisify_1 = __importDefault$3(promisify$1);
+const debug$4 = debug_1$3.default('agent-base');
+function isAgent(v) {
+    return Boolean(v) && typeof v.addRequest === 'function';
+}
+function isSecureEndpoint() {
+    const { stack } = new Error();
+    if (typeof stack !== 'string')
+        return false;
+    return stack.split('\n').some(l => l.indexOf('(https.js:') !== -1 || l.indexOf('node:https:') !== -1);
+}
+function createAgent(callback, opts) {
+    return new createAgent.Agent(callback, opts);
+}
+(function (createAgent) {
+    /**
+     * Base `http.Agent` implementation.
+     * No pooling/keep-alive is implemented by default.
+     *
+     * @param {Function} callback
+     * @api public
+     */
+    class Agent extends events_1.EventEmitter {
+        constructor(callback, _opts) {
+            super();
+            let opts = _opts;
+            if (typeof callback === 'function') {
+                this.callback = callback;
+            }
+            else if (callback) {
+                opts = callback;
+            }
+            // Timeout for the socket to be returned from the callback
+            this.timeout = null;
+            if (opts && typeof opts.timeout === 'number') {
+                this.timeout = opts.timeout;
+            }
+            // These aren't actually used by `agent-base`, but are required
+            // for the TypeScript definition files in `@types/node` :/
+            this.maxFreeSockets = 1;
+            this.maxSockets = 1;
+            this.maxTotalSockets = Infinity;
+            this.sockets = {};
+            this.freeSockets = {};
+            this.requests = {};
+            this.options = {};
+        }
+        get defaultPort() {
+            if (typeof this.explicitDefaultPort === 'number') {
+                return this.explicitDefaultPort;
+            }
+            return isSecureEndpoint() ? 443 : 80;
+        }
+        set defaultPort(v) {
+            this.explicitDefaultPort = v;
+        }
+        get protocol() {
+            if (typeof this.explicitProtocol === 'string') {
+                return this.explicitProtocol;
+            }
+            return isSecureEndpoint() ? 'https:' : 'http:';
+        }
+        set protocol(v) {
+            this.explicitProtocol = v;
+        }
+        callback(req, opts, fn) {
+            throw new Error('"agent-base" has no default implementation, you must subclass and override `callback()`');
+        }
+        /**
+         * Called by node-core's "_http_client.js" module when creating
+         * a new HTTP request with this Agent instance.
+         *
+         * @api public
+         */
+        addRequest(req, _opts) {
+            const opts = Object.assign({}, _opts);
+            if (typeof opts.secureEndpoint !== 'boolean') {
+                opts.secureEndpoint = isSecureEndpoint();
+            }
+            if (opts.host == null) {
+                opts.host = 'localhost';
+            }
+            if (opts.port == null) {
+                opts.port = opts.secureEndpoint ? 443 : 80;
+            }
+            if (opts.protocol == null) {
+                opts.protocol = opts.secureEndpoint ? 'https:' : 'http:';
+            }
+            if (opts.host && opts.path) {
+                // If both a `host` and `path` are specified then it's most
+                // likely the result of a `url.parse()` call... we need to
+                // remove the `path` portion so that `net.connect()` doesn't
+                // attempt to open that as a unix socket file.
+                delete opts.path;
+            }
+            delete opts.agent;
+            delete opts.hostname;
+            delete opts._defaultAgent;
+            delete opts.defaultPort;
+            delete opts.createConnection;
+            // Hint to use "Connection: close"
+            // XXX: non-documented `http` module API :(
+            req._last = true;
+            req.shouldKeepAlive = false;
+            let timedOut = false;
+            let timeoutId = null;
+            const timeoutMs = opts.timeout || this.timeout;
+            const onerror = (err) => {
+                if (req._hadError)
+                    return;
+                req.emit('error', err);
+                // For Safety. Some additional errors might fire later on
+                // and we need to make sure we don't double-fire the error event.
+                req._hadError = true;
+            };
+            const ontimeout = () => {
+                timeoutId = null;
+                timedOut = true;
+                const err = new Error(`A "socket" was not created for HTTP request before ${timeoutMs}ms`);
+                err.code = 'ETIMEOUT';
+                onerror(err);
+            };
+            const callbackError = (err) => {
+                if (timedOut)
+                    return;
+                if (timeoutId !== null) {
+                    clearTimeout(timeoutId);
+                    timeoutId = null;
+                }
+                onerror(err);
+            };
+            const onsocket = (socket) => {
+                if (timedOut)
+                    return;
+                if (timeoutId != null) {
+                    clearTimeout(timeoutId);
+                    timeoutId = null;
+                }
+                if (isAgent(socket)) {
+                    // `socket` is actually an `http.Agent` instance, so
+                    // relinquish responsibility for this `req` to the Agent
+                    // from here on
+                    debug$4('Callback returned another Agent instance %o', socket.constructor.name);
+                    socket.addRequest(req, opts);
+                    return;
+                }
+                if (socket) {
+                    socket.once('free', () => {
+                        this.freeSocket(socket, opts);
+                    });
+                    req.onSocket(socket);
+                    return;
+                }
+                const err = new Error(`no Duplex stream was returned to agent-base for \`${req.method} ${req.path}\``);
+                onerror(err);
+            };
+            if (typeof this.callback !== 'function') {
+                onerror(new Error('`callback` is not defined'));
+                return;
+            }
+            if (!this.promisifiedCallback) {
+                if (this.callback.length >= 3) {
+                    debug$4('Converting legacy callback function to promise');
+                    this.promisifiedCallback = promisify_1.default(this.callback);
+                }
+                else {
+                    this.promisifiedCallback = this.callback;
+                }
+            }
+            if (typeof timeoutMs === 'number' && timeoutMs > 0) {
+                timeoutId = setTimeout(ontimeout, timeoutMs);
+            }
+            if ('port' in opts && typeof opts.port !== 'number') {
+                opts.port = Number(opts.port);
+            }
+            try {
+                debug$4('Resolving socket for %o request: %o', opts.protocol, `${req.method} ${req.path}`);
+                Promise.resolve(this.promisifiedCallback(req, opts)).then(onsocket, callbackError);
+            }
+            catch (err) {
+                Promise.reject(err).catch(callbackError);
+            }
+        }
+        freeSocket(socket, opts) {
+            debug$4('Freeing socket %o %o', socket.constructor.name, opts);
+            socket.destroy();
+        }
+        destroy() {
+            debug$4('Destroying agent %o', this.constructor.name);
+        }
+    }
+    createAgent.Agent = Agent;
+    // So that `instanceof` works correctly
+    createAgent.prototype = createAgent.Agent.prototype;
+})(createAgent || (createAgent = {}));
+var src = createAgent;
+
+var parseProxyResponse$1 = {};
+
+var __importDefault$2 = (commonjsGlobal && commonjsGlobal.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(parseProxyResponse$1, "__esModule", { value: true });
+const debug_1$2 = __importDefault$2(srcExports);
+const debug$3 = debug_1$2.default('https-proxy-agent:parse-proxy-response');
+function parseProxyResponse(socket) {
+    return new Promise((resolve, reject) => {
+        // we need to buffer any HTTP traffic that happens with the proxy before we get
+        // the CONNECT response, so that if the response is anything other than an "200"
+        // response code, then we can re-play the "data" events on the socket once the
+        // HTTP parser is hooked up...
+        let buffersLength = 0;
+        const buffers = [];
+        function read() {
+            const b = socket.read();
+            if (b)
+                ondata(b);
+            else
+                socket.once('readable', read);
+        }
+        function cleanup() {
+            socket.removeListener('end', onend);
+            socket.removeListener('error', onerror);
+            socket.removeListener('close', onclose);
+            socket.removeListener('readable', read);
+        }
+        function onclose(err) {
+            debug$3('onclose had error %o', err);
+        }
+        function onend() {
+            debug$3('onend');
+        }
+        function onerror(err) {
+            cleanup();
+            debug$3('onerror %o', err);
+            reject(err);
+        }
+        function ondata(b) {
+            buffers.push(b);
+            buffersLength += b.length;
+            const buffered = Buffer.concat(buffers, buffersLength);
+            const endOfHeaders = buffered.indexOf('\r\n\r\n');
+            if (endOfHeaders === -1) {
+                // keep buffering
+                debug$3('have not received end of HTTP headers yet...');
+                read();
+                return;
+            }
+            const firstLine = buffered.toString('ascii', 0, buffered.indexOf('\r\n'));
+            const statusCode = +firstLine.split(' ')[1];
+            debug$3('got proxy server response: %o', firstLine);
+            resolve({
+                statusCode,
+                buffered
+            });
+        }
+        socket.on('error', onerror);
+        socket.on('close', onclose);
+        socket.on('end', onend);
+        read();
+    });
+}
+parseProxyResponse$1.default = parseProxyResponse;
+
+var __awaiter = (commonjsGlobal && commonjsGlobal.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+var __importDefault$1 = (commonjsGlobal && commonjsGlobal.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(agent, "__esModule", { value: true });
+const net_1 = __importDefault$1(require$$0$9);
+const tls_1 = __importDefault$1(require$$1$2);
+const url_1 = __importDefault$1(require$$5$5);
+const assert_1 = __importDefault$1(require$$5$4);
+const debug_1$1 = __importDefault$1(srcExports);
+const agent_base_1 = src;
+const parse_proxy_response_1 = __importDefault$1(parseProxyResponse$1);
+const debug$2 = debug_1$1.default('https-proxy-agent:agent');
+/**
+ * The `HttpsProxyAgent` implements an HTTP Agent subclass that connects to
+ * the specified "HTTP(s) proxy server" in order to proxy HTTPS requests.
+ *
+ * Outgoing HTTP requests are first tunneled through the proxy server using the
+ * `CONNECT` HTTP request method to establish a connection to the proxy server,
+ * and then the proxy server connects to the destination target and issues the
+ * HTTP request from the proxy server.
+ *
+ * `https:` requests have their socket connection upgraded to TLS once
+ * the connection to the proxy server has been established.
+ *
+ * @api public
+ */
+let HttpsProxyAgent$1 = class HttpsProxyAgent extends agent_base_1.Agent {
+    constructor(_opts) {
+        let opts;
+        if (typeof _opts === 'string') {
+            opts = url_1.default.parse(_opts);
+        }
+        else {
+            opts = _opts;
+        }
+        if (!opts) {
+            throw new Error('an HTTP(S) proxy server `host` and `port` must be specified!');
+        }
+        debug$2('creating new HttpsProxyAgent instance: %o', opts);
+        super(opts);
+        const proxy = Object.assign({}, opts);
+        // If `true`, then connect to the proxy server over TLS.
+        // Defaults to `false`.
+        this.secureProxy = opts.secureProxy || isHTTPS(proxy.protocol);
+        // Prefer `hostname` over `host`, and set the `port` if needed.
+        proxy.host = proxy.hostname || proxy.host;
+        if (typeof proxy.port === 'string') {
+            proxy.port = parseInt(proxy.port, 10);
+        }
+        if (!proxy.port && proxy.host) {
+            proxy.port = this.secureProxy ? 443 : 80;
+        }
+        // ALPN is supported by Node.js >= v5.
+        // attempt to negotiate http/1.1 for proxy servers that support http/2
+        if (this.secureProxy && !('ALPNProtocols' in proxy)) {
+            proxy.ALPNProtocols = ['http 1.1'];
+        }
+        if (proxy.host && proxy.path) {
+            // If both a `host` and `path` are specified then it's most likely
+            // the result of a `url.parse()` call... we need to remove the
+            // `path` portion so that `net.connect()` doesn't attempt to open
+            // that as a Unix socket file.
+            delete proxy.path;
+            delete proxy.pathname;
+        }
+        this.proxy = proxy;
+    }
+    /**
+     * Called when the node-core HTTP client library is creating a
+     * new HTTP request.
+     *
+     * @api protected
+     */
+    callback(req, opts) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const { proxy, secureProxy } = this;
+            // Create a socket connection to the proxy server.
+            let socket;
+            if (secureProxy) {
+                debug$2('Creating `tls.Socket`: %o', proxy);
+                socket = tls_1.default.connect(proxy);
+            }
+            else {
+                debug$2('Creating `net.Socket`: %o', proxy);
+                socket = net_1.default.connect(proxy);
+            }
+            const headers = Object.assign({}, proxy.headers);
+            const hostname = `${opts.host}:${opts.port}`;
+            let payload = `CONNECT ${hostname} HTTP/1.1\r\n`;
+            // Inject the `Proxy-Authorization` header if necessary.
+            if (proxy.auth) {
+                headers['Proxy-Authorization'] = `Basic ${Buffer.from(proxy.auth).toString('base64')}`;
+            }
+            // The `Host` header should only include the port
+            // number when it is not the default port.
+            let { host, port, secureEndpoint } = opts;
+            if (!isDefaultPort(port, secureEndpoint)) {
+                host += `:${port}`;
+            }
+            headers.Host = host;
+            headers.Connection = 'close';
+            for (const name of Object.keys(headers)) {
+                payload += `${name}: ${headers[name]}\r\n`;
+            }
+            const proxyResponsePromise = parse_proxy_response_1.default(socket);
+            socket.write(`${payload}\r\n`);
+            const { statusCode, buffered } = yield proxyResponsePromise;
+            if (statusCode === 200) {
+                req.once('socket', resume);
+                if (opts.secureEndpoint) {
+                    // The proxy is connecting to a TLS server, so upgrade
+                    // this socket connection to a TLS connection.
+                    debug$2('Upgrading socket connection to TLS');
+                    const servername = opts.servername || opts.host;
+                    return tls_1.default.connect(Object.assign(Object.assign({}, omit(opts, 'host', 'hostname', 'path', 'port')), { socket,
+                        servername }));
+                }
+                return socket;
+            }
+            // Some other status code that's not 200... need to re-play the HTTP
+            // header "data" events onto the socket once the HTTP machinery is
+            // attached so that the node core `http` can parse and handle the
+            // error status code.
+            // Close the original socket, and a new "fake" socket is returned
+            // instead, so that the proxy doesn't get the HTTP request
+            // written to it (which may contain `Authorization` headers or other
+            // sensitive data).
+            //
+            // See: https://hackerone.com/reports/541502
+            socket.destroy();
+            const fakeSocket = new net_1.default.Socket({ writable: false });
+            fakeSocket.readable = true;
+            // Need to wait for the "socket" event to re-play the "data" events.
+            req.once('socket', (s) => {
+                debug$2('replaying proxy buffer for failed request');
+                assert_1.default(s.listenerCount('data') > 0);
+                // Replay the "buffered" Buffer onto the fake `socket`, since at
+                // this point the HTTP module machinery has been hooked up for
+                // the user.
+                s.push(buffered);
+                s.push(null);
+            });
+            return fakeSocket;
+        });
+    }
+};
+agent.default = HttpsProxyAgent$1;
+function resume(socket) {
+    socket.resume();
+}
+function isDefaultPort(port, secure) {
+    return Boolean((!secure && port === 80) || (secure && port === 443));
+}
+function isHTTPS(protocol) {
+    return typeof protocol === 'string' ? /^https:?$/i.test(protocol) : false;
+}
+function omit(obj, ...keys) {
+    const ret = {};
+    let key;
+    for (key in obj) {
+        if (!keys.includes(key)) {
+            ret[key] = obj[key];
+        }
+    }
+    return ret;
+}
+
+var __importDefault = (commonjsGlobal && commonjsGlobal.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+const agent_1 = __importDefault(agent);
+function createHttpsProxyAgent(opts) {
+    return new agent_1.default(opts);
+}
+(function (createHttpsProxyAgent) {
+    createHttpsProxyAgent.HttpsProxyAgent = agent_1.default;
+    createHttpsProxyAgent.prototype = agent_1.default.prototype;
+})(createHttpsProxyAgent || (createHttpsProxyAgent = {}));
+var dist = createHttpsProxyAgent;
+
+
+var HttpsProxyAgent = /*@__PURE__*/getDefaultExportFromCjs(dist);
+
+var followRedirects$1 = {exports: {}};
 
 var debug$1;
 
@@ -55320,7 +53330,7 @@ var debug_1 = function () {
   if (!debug$1) {
     try {
       /* eslint global-require: off */
-      debug$1 = requireSrc()("follow-redirects");
+      debug$1 = srcExports("follow-redirects");
     }
     catch (error) { /* */ }
     if (typeof debug$1 !== "function") {
@@ -55332,8 +53342,8 @@ var debug_1 = function () {
 
 var url = require$$5$5;
 var URL$1 = url.URL;
-var http = require$$2$1;
-var https = require$$3$1;
+var http = http$5;
+var https = https$4;
 var Writable = stream$2.Writable;
 var assert = require$$5$4;
 var debug = debug_1;
@@ -56043,7 +54053,7 @@ followRedirects$1.exports.wrap = wrap;
 var followRedirectsExports = followRedirects$1.exports;
 var followRedirects = /*@__PURE__*/getDefaultExportFromCjs(followRedirectsExports);
 
-const VERSION$1 = "1.18.0";
+const VERSION$1 = "1.18.1";
 
 function parseProtocol(url) {
   const match = /^([-+\w]{1,25}):(?:\/\/)?/.exec(url);
@@ -56088,14 +54098,16 @@ function fromDataURI(uri, asBlob, options) {
 
     // RFC 2397 section 3: default mediatype is text/plain;charset=US-ASCII
     // Bare `data:,` leaves mime undefined; Blob normalises that to "" per spec.
-    let mime;
+    let mime = '';
     if (type) {
       mime = params ? type + params : type;
     } else if (params) {
       mime = 'text/plain' + params;
     }
 
-    const buffer = Buffer.from(decodeURIComponent(body), encoding);
+    const buffer = encoding === 'base64'
+      ? Buffer.from(body, 'base64')
+      : Buffer.from(decodeURIComponent(body), encoding);
 
     if (asBlob) {
       if (!_Blob) {
@@ -57063,6 +55075,53 @@ const kAxiosInstalledTunnel = Symbol('axios.http.installedTunnel');
 // so unbounded growth is not a concern in practice.
 const tunnelingAgentCache = new Map();
 const tunnelingAgentCacheUser = new WeakMap();
+// Minimum minor versions where Node's HTTP Agent supports native proxyEnv
+// handling. Checking the selected agent below also covers startup modes such
+// as NODE_OPTIONS=--use-env-proxy and --no-use-env-proxy precedence.
+const NODE_NATIVE_ENV_PROXY_SUPPORT = {
+  22: 21,
+  24: 5,
+};
+
+function isNodeNativeEnvProxySupported(nodeVersion = process.versions && process.versions.node) {
+  if (!nodeVersion) {
+    return false;
+  }
+
+  const [major, minor] = nodeVersion.split('.').map((part) => Number(part));
+
+  if (!Number.isInteger(major) || !Number.isInteger(minor)) {
+    return false;
+  }
+
+  if (major > 24) {
+    return true;
+  }
+
+  return (
+    NODE_NATIVE_ENV_PROXY_SUPPORT[major] != null && minor >= NODE_NATIVE_ENV_PROXY_SUPPORT[major]
+  );
+}
+
+function isNodeEnvProxyEnabled(agent, nodeVersion = process.versions && process.versions.node) {
+  if (!isNodeNativeEnvProxySupported(nodeVersion)) {
+    return false;
+  }
+
+  const agentOptions = agent && agent.options;
+
+  return Boolean(
+    agentOptions &&
+      utils$1.hasOwnProp(agentOptions, 'proxyEnv') &&
+      agentOptions.proxyEnv != null
+  );
+}
+
+function getProxyEnvAgent(options, configHttpAgent, configHttpsAgent) {
+  return isHttps.test(options.protocol)
+    ? (configHttpsAgent || https$4.globalAgent)
+    : (configHttpAgent || http$5.globalAgent);
+}
 
 function getTunnelingAgent(agentOptions, userHttpsAgent) {
   const key =
@@ -57184,9 +55243,10 @@ function isSameOriginRedirect(redirectOptions, requestDetails) {
  *
  * @returns {http.ClientRequestArgs}
  */
-function setProxy(options, configProxy, location, isRedirect, configHttpsAgent) {
+function setProxy(options, configProxy, location, isRedirect, configHttpsAgent, configHttpAgent) {
   let proxy = configProxy;
-  if (!proxy && proxy !== false) {
+  const proxyEnvAgent = getProxyEnvAgent(options, configHttpAgent, configHttpsAgent);
+  if (!proxy && proxy !== false && !isNodeEnvProxyEnabled(proxyEnvAgent)) {
     const proxyUrl = getProxyForUrl(location);
     if (proxyUrl) {
       if (!shouldBypassProxy(location)) {
@@ -57337,7 +55397,14 @@ function setProxy(options, configProxy, location, isRedirect, configHttpsAgent) 
   options.beforeRedirects.proxy = function beforeRedirect(redirectOptions) {
     // Configure proxy for redirected request, passing the original config proxy to apply
     // the exact same logic as if the redirected request was performed by axios directly.
-    setProxy(redirectOptions, configProxy, redirectOptions.href, true, configHttpsAgent);
+    setProxy(
+      redirectOptions,
+      configProxy,
+      redirectOptions.href,
+      true,
+      configHttpsAgent,
+      configHttpAgent
+    );
   };
 }
 
@@ -57449,10 +55516,12 @@ var httpAdapter = isHttpAdapterSupported &&
       let httpVersion = own('httpVersion');
       if (httpVersion === undefined) httpVersion = 1;
       let http2Options = own('http2Options');
-      const responseType = own('responseType');
-      const responseEncoding = own('responseEncoding');
       const httpAgent = own('httpAgent');
       const httpsAgent = own('httpsAgent');
+      const configProxy = own('proxy');
+      const responseType = own('responseType');
+      const responseEncoding = own('responseEncoding');
+      const socketPath = own('socketPath');
       const method = own('method').toUpperCase();
       const maxRedirects = own('maxRedirects');
       const maxBodyLength = own('maxBodyLength');
@@ -57577,7 +55646,14 @@ var httpAdapter = isHttpAdapterSupported &&
 
       // Parse url
       const fullPath = buildFullPath(own('baseURL'), own('url'), own('allowAbsoluteUrls'), config);
-      const parsed = new URL(fullPath, platform.hasBrowserEnv ? platform.origin : undefined);
+      // Unix-socket requests (own socketPath) commonly pass a path-only url
+      // like '/foo'; supply a synthetic base so new URL() can still parse it.
+      // Use the own-property value (not config.socketPath) so a polluted
+      // prototype cannot influence URL base selection.
+      const urlBase = socketPath
+        ? 'http://localhost'
+        : (platform.hasBrowserEnv ? platform.origin : undefined);
+      const parsed = new URL(fullPath, urlBase);
       const protocol = parsed.protocol || supportedProtocols[0];
 
       if (protocol === 'data:') {
@@ -57782,11 +55858,12 @@ var httpAdapter = isHttpAdapterSupported &&
           own('paramsSerializer')
         ).replace(/^\?/, '');
       } catch (err) {
-        const customErr = new Error(err.message);
-        customErr.config = config;
-        customErr.url = own('url');
-        customErr.exists = true;
-        return reject(customErr);
+        return reject(
+          AxiosError$2.from(err, AxiosError$2.ERR_BAD_REQUEST, config, null, null, {
+            url: own('url'),
+            exists: true
+          })
+        );
       }
 
       headers.set(
@@ -57814,7 +55891,6 @@ var httpAdapter = isHttpAdapterSupported &&
       // cacheable-lookup integration hotfix
       !utils$1.isUndefined(lookup) && (options.lookup = lookup);
 
-      const socketPath = own('socketPath');
       if (socketPath) {
         if (typeof socketPath !== 'string') {
           return reject(
@@ -57852,10 +55928,11 @@ var httpAdapter = isHttpAdapterSupported &&
         options.port = parsed.port;
         setProxy(
           options,
-          own('proxy'),
+          configProxy,
           protocol + '//' + parsed.hostname + (parsed.port ? ':' + parsed.port : '') + options.path,
           false,
-          httpsAgent
+          httpsAgent,
+          httpAgent
         );
       }
       let transport;
@@ -57879,7 +55956,7 @@ var httpAdapter = isHttpAdapterSupported &&
         if (configTransport) {
           transport = configTransport;
         } else if (maxRedirects === 0) {
-          transport = isHttpsRequest ? require$$3$1 : require$$2$1;
+          transport = isHttpsRequest ? https$4 : http$5;
           isNativeTransport = true;
         } else {
           transportEnforcesMaxBodyLength = true;
@@ -57951,10 +56028,12 @@ var httpAdapter = isHttpAdapterSupported &&
         }
       }
 
+      // Set an explicit maxBodyLength option for transports that inspect it.
+      // When maxBodyLength is -1 (default/unlimited), use Infinity so
+      // follow-redirects does not fall back to its own 10MB default.
       if (maxBodyLength > -1) {
         options.maxBodyLength = maxBodyLength;
       } else {
-        // follow-redirects does not skip comparison, so it should always succeed for axios -1 unlimited
         options.maxBodyLength = Infinity;
       }
 
@@ -58177,7 +56256,11 @@ var httpAdapter = isHttpAdapterSupported &&
 
       req.on('socket', function handleRequestSocket(socket) {
         // default interval of sending ack packet is 1 minute
-        socket.setKeepAlive(true, 1000 * 60);
+        // proxy agents (e.g. agent-base) may return a generic Duplex stream
+        // that doesn't have setKeepAlive, so guard before calling
+        if (typeof socket.setKeepAlive === 'function') {
+          socket.setKeepAlive(true, 1000 * 60);
+        }
 
         // Install a single 'error' listener per socket (not per request) to avoid
         // accumulating listeners on pooled keep-alive sockets that get reassigned
@@ -58367,7 +56450,11 @@ var cookies = platform.hasStandardBrowserEnv
           const cookie = cookies[i].replace(/^\s+/, '');
           const eq = cookie.indexOf('=');
           if (eq !== -1 && cookie.slice(0, eq) === name) {
-            return decodeURIComponent(cookie.slice(eq + 1));
+            try {
+              return decodeURIComponent(cookie.slice(eq + 1));
+            } catch (e) {
+              return cookie.slice(eq + 1);
+            }
           }
         }
         return null;
@@ -58399,6 +56486,7 @@ const headersToObject = (thing) => (thing instanceof AxiosHeaders$2 ? { ...thing
  */
 function mergeConfig$1(config1, config2) {
   // eslint-disable-next-line no-param-reassign
+  config1 = config1 || {};
   config2 = config2 || {};
 
   // Use a null-prototype object so that downstream reads such as `config.auth`
@@ -58548,7 +56636,7 @@ function setFormDataHeaders(headers, formHeaders, policy) {
     return;
   }
 
-  Object.entries(formHeaders).forEach(([key, val]) => {
+  Object.entries(formHeaders || {}).forEach(([key, val]) => {
     if (FORM_DATA_CONTENT_HEADERS.includes(key.toLowerCase())) {
       headers.set(key, val);
     }
@@ -58598,10 +56686,14 @@ function resolveConfig(config) {
     const username = utils$1.getSafeProp(auth, 'username') || '';
     const password = utils$1.getSafeProp(auth, 'password') || '';
 
-    headers.set(
-      'Authorization',
-      'Basic ' + btoa(username + ':' + (password ? encodeUTF8$1(password) : ''))
-    );
+    try {
+      headers.set(
+        'Authorization',
+        'Basic ' + btoa(username + ':' + (password ? encodeUTF8$1(password) : ''))
+      );
+    } catch (e) {
+      throw AxiosError$2.from(e, AxiosError$2.ERR_BAD_OPTION_VALUE, config);
+    }
   }
 
   if (utils$1.isFormData(data)) {
@@ -58852,6 +56944,7 @@ var xhrAdapter = isXHRAdapterSupported &&
             config
           )
         );
+        done();
         return;
       }
 
@@ -58903,7 +56996,7 @@ const composeSignals = (signals, timeout) => {
     signals = null;
   };
 
-  signals.forEach((signal) => signal.addEventListener('abort', onabort));
+  signals.forEach((signal) => signal.addEventListener('abort', onabort, { once: true }));
 
   const { signal } = controller;
 
@@ -59546,7 +57639,17 @@ const factory = (env) => {
         const canceledError = composedSignal.reason;
         canceledError.config = config;
         request && (canceledError.request = request);
-        err !== canceledError && (canceledError.cause = err);
+        if (err !== canceledError) {
+          // Non-enumerable to match native Error `cause` semantics so loggers
+          // don't recurse into circular fetch internals (see #7205).
+          Object.defineProperty(canceledError, 'cause', {
+            __proto__: null,
+            value: err,
+            writable: true,
+            enumerable: false,
+            configurable: true,
+          });
+        }
         throw canceledError;
       }
 
@@ -59568,18 +57671,23 @@ const factory = (env) => {
       }
 
       if (err && err.name === 'TypeError' && /Load failed|fetch/i.test(err.message)) {
-        throw Object.assign(
-          new AxiosError$2(
-            'Network Error',
-            AxiosError$2.ERR_NETWORK,
-            config,
-            request,
-            err && err.response
-          ),
-          {
-            cause: err.cause || err,
-          }
+        const networkError = new AxiosError$2(
+          'Network Error',
+          AxiosError$2.ERR_NETWORK,
+          config,
+          request,
+          err && err.response
         );
+        // Non-enumerable to match native Error `cause` semantics so loggers
+        // don't recurse into circular fetch internals (see #7205).
+        Object.defineProperty(networkError, 'cause', {
+          __proto__: null,
+          value: err.cause || err,
+          writable: true,
+          enumerable: false,
+          configurable: true,
+        });
+        throw networkError;
       }
 
       throw AxiosError$2.from(err, err && err.code, config, request, err && err.response);
@@ -59717,7 +57825,7 @@ function getAdapter$1(adapters, config) {
 
     throw new AxiosError$2(
       `There is no suitable adapter to dispatch the request ` + s,
-      'ERR_NOT_SUPPORT'
+      AxiosError$2.ERR_NOT_SUPPORT
     );
   }
 
@@ -59898,7 +58006,7 @@ validators$1.spelling = function spelling(correctSpelling) {
  */
 
 function assertOptions(options, schema, allowUnknown) {
-  if (typeof options !== 'object') {
+  if (typeof options !== 'object' || options === null) {
     throw new AxiosError$2('options must be an object', AxiosError$2.ERR_BAD_OPTION_VALUE);
   }
   const keys = Object.keys(options);
