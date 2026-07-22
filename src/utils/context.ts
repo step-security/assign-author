@@ -1,20 +1,22 @@
 import type { Context } from '@actions/github/lib/context';
-import { ContextHelper } from '@technote-space/github-action-helper';
+
+const getSender = (context: Context): string | false =>
+  context.payload.sender?.type === 'User' ? context.payload.sender.login : false;
 
 const getCurrentAssignees = (context: Context): string[] | false => {
   if ('issues' === context.eventName) {
-    return context.payload.issue && 'assignees' in context.payload.issue ? context.payload.issue.assignees.map(assignee => assignee.login) : false;
+    return context.payload.issue && 'assignees' in context.payload.issue ? context.payload.issue.assignees.map((assignee: { login: string }) => assignee.login) : false;
   }
 
   if ('pull_request' === context.eventName || 'pull_request_target' === context.eventName) {
-    return context.payload.pull_request && 'assignees' in context.payload.pull_request ? context.payload.pull_request.assignees.map(assignee => assignee.login) : false;
+    return context.payload.pull_request && 'assignees' in context.payload.pull_request ? context.payload.pull_request.assignees.map((assignee: { login: string }) => assignee.login) : false;
   }
 
   return false;
 };
 
 export const getAssignees = (context: Context): string[] | false => {
-  const sender = ContextHelper.getSender(context);
+  const sender = getSender(context);
   if (false === sender) {
     return false;
   }

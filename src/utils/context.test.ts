@@ -1,6 +1,6 @@
 /* eslint-disable no-magic-numbers */
-import { getContext } from '@technote-space/github-action-test-helper';
 import { describe, expect, it } from 'vitest';
+import { getContext } from '../test-utils';
 import { getAssignees } from './context';
 
 describe('getAssignees', () => {

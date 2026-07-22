@@ -1,33 +1,20 @@
 /* eslint-disable no-magic-numbers */
 import path from 'path';
-import { Logger } from '@technote-space/github-action-log-helper';
-import { disableNetConnect, getApiFixture, getContext, getOctokit } from '@technote-space/github-action-test-helper';
-import nock from 'nock';
 import { describe, expect, it, vi } from 'vitest';
 import { execute } from './process';
+import { getApiFixture, getContext } from './test-utils';
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const makeOctokit = (impl: ReturnType<typeof vi.fn>): any => ({
+  rest: { issues: { addAssignees: impl } },
+});
 
 describe('execute', () => {
-  disableNetConnect(nock);
-
-  const logger  = new Logger();
-  const octokit = getOctokit();
-
   it('should add assignees', async() => {
-    const fn1 = vi.fn();
-    const fn2 = vi.fn();
-    nock('https://api.github.com')
-      .post('/repos/hello/world/issues/1/assignees', body => {
-        fn1();
-        expect(body).toHaveProperty('assignees');
-        expect(body.assignees).toEqual(['test']);
-        return body;
-      })
-      .reply(201, () => {
-        fn2();
-        return getApiFixture(path.resolve(__dirname, 'fixtures'), 'repos.issues.assignees');
-      });
+    const fixture = getApiFixture(path.resolve(__dirname, 'fixtures'), 'repos.issues.assignees');
+    const fn      = vi.fn().mockResolvedValue({ data: fixture });
 
-    await execute(logger, octokit, getContext({
+    await execute(makeOctokit(fn), getContext({
       repo: {
         owner: 'hello',
         repo: 'world',
@@ -44,7 +31,12 @@ describe('execute', () => {
       },
     }));
 
-    expect(fn1).toBeCalledTimes(1);
-    expect(fn2).toBeCalledTimes(1);
+    expect(fn).toBeCalledTimes(1);
+    expect(fn).toBeCalledWith({
+      owner: 'hello',
+      repo: 'world',
+      'issue_number': 1,
+      assignees: ['test'],
+    });
   });
 });

@@ -1,18 +1,18 @@
+import type { getOctokit } from '@actions/github';
 import type { Context } from '@actions/github/lib/context';
-import type { Octokit } from '@technote-space/github-action-helper';
-import type { Logger } from '@technote-space/github-action-log-helper';
+import * as core from '@actions/core';
 
-export const addAssignees = async(assignees: string[] | false, octokit: Octokit, logger: Logger, context: Context): Promise<void> => {
+export const addAssignees = async(assignees: string[] | false, octokit: ReturnType<typeof getOctokit>, context: Context): Promise<void> => {
   if (false === assignees) {
-    logger.warn('Invalid target.');
+    core.warning('Invalid target.');
     return;
   }
 
-  logger.info('Adding assignees');
-  logger.info(assignees);
+  core.info('Adding assignees');
+  assignees.forEach(a => core.info(a));
 
   if (!assignees.length) {
-    logger.info('do nothing...');
+    core.info('do nothing...');
     return;
   }
 
@@ -25,7 +25,7 @@ export const addAssignees = async(assignees: string[] | false, octokit: Octokit,
     });
   } catch (error: any) { // eslint-disable-line @typescript-eslint/no-explicit-any
     if ('Resource not accessible by integration' === error.message) {
-      logger.warn(error.message);
+      core.warning(error.message);
     } else {
       throw error;
     }

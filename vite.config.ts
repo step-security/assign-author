@@ -1,7 +1,5 @@
-/// <reference types="vitest" />
-import { defineConfig } from 'vite';
+import { defineConfig } from 'vitest/config';
 
-// https://vitejs.dev/config/
 export default defineConfig({
   test: {
     setupFiles: './src/setup.ts',
@@ -9,10 +7,8 @@ export default defineConfig({
     mockReset: true,
     restoreMocks: true,
     coverage: {
+      provider: 'v8',
       reporter: ['html', 'lcov', 'text'],
-    },
-    deps: {
-      inline: [/github-action-test-helper/]
     },
   },
 });
