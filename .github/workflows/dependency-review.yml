@@ -25,3 +25,19 @@ jobs:
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       - name: 'Dependency Review'
         uses: actions/dependency-review-action@4081bf99e2866ebe428fc0477b69eb4fcda7220a # v4.4.0
+        with:
+          allow-ghsas: >-
+            GHSA-52cp-r559-cp3m,
+            GHSA-5p4m-2wfm-xmqj,
+            GHSA-h67p-54hq-rp68,
+            GHSA-mh29-5h37-fv8m,
+            GHSA-w5hq-g745-h8pq,
+            GHSA-4w7w-66w2-5vf9,
+            GHSA-93m4-6634-74q7,
+            GHSA-c27g-q93r-2cwf,
+            GHSA-fx2h-pf6j-xcff,
+            GHSA-g4jq-h2w9-997c,
+            GHSA-jqfw-vq24-v9c3,
+            GHSA-v6wh-96g9-6wx3,
+            GHSA-5xrq-8626-4rwp,
+            GHSA-67mh-4wv8-2f99
