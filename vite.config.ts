@@ -11,8 +11,10 @@ export default defineConfig({
     coverage: {
       reporter: ['html', 'lcov', 'text'],
     },
-    deps: {
-      inline: [/github-action-test-helper/]
+    server: {
+      deps: {
+        inline: [/github-action-test-helper/]
+      },
     },
   },
 });

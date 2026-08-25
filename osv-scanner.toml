@@ -12,7 +12,43 @@ reason = "Untrusted headers are not processed"
 
 [[IgnoredVulns]]
 id = "GHSA-67mh-4wv8-2f99"
-reason = "It is a a test dependency"
+reason = "It is only used for testing"
+
+[[IgnoredVulns]]
+id = "GHSA-52cp-r559-cp3m"
+reason = "It is only used for testing"
+
+[[IgnoredVulns]]
+id = "GHSA-5p4m-2wfm-xmqj"
+reason = "It is only used for testing"
+
+[[IgnoredVulns]]
+id = "GHSA-h67p-54hq-rp68"
+reason = "It is only used for testing"
+
+[[IgnoredVulns]]
+id = "GHSA-mh29-5h37-fv8m"
+reason = "It is only used for testing"
+
+[[IgnoredVulns]]
+id = "GHSA-w5hq-g745-h8pq"
+reason = "It is only used for testing"
+
+[[IgnoredVulns]]
+id = "GHSA-4w7w-66w2-5vf9"
+reason = "It is only used for testing"
+
+[[IgnoredVulns]]
+id = "GHSA-93m4-6634-74q7"
+reason = "It is only used for testing"
+
+[[IgnoredVulns]]
+id = "GHSA-c27g-q93r-2cwf"
+reason = "It is only used for testing"
+
+[[IgnoredVulns]]
+id = "GHSA-fx2h-pf6j-xcff"
+reason = "It is only used for testing"
 
 [[IgnoredVulns]]
 id = "GHSA-g4jq-h2w9-997c"
@@ -23,5 +59,9 @@ id = "GHSA-jqfw-vq24-v9c3"
 reason = "It is only used for testing"
 
 [[IgnoredVulns]]
-id = "GHSA-93m4-6634-74q7"
+id = "GHSA-v6wh-96g9-6wx3"
+reason = "It is only used for testing"
+
+[[IgnoredVulns]]
+id = "GHSA-5xrq-8626-4rwp"
 reason = "It is only used for testing"

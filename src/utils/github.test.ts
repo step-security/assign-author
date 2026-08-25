@@ -103,7 +103,7 @@ describe('addAssignees', () => {
         owner: 'hello',
         repo: 'world',
       },
-    }))).rejects.toThrow(new Error('test'));
+    }))).rejects.toThrow('test');
 
     expect(fn).toBeCalledTimes(1);
     stdoutCalledWith(mockStdout, [
