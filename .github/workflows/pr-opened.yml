@@ -15,4 +15,4 @@ jobs:
         with:
           egress-policy: audit
 
-      - uses: step-security/assign-author@172c40c0e4003f78b4e8df61b4382ffcf3fa3c31 # main
+      - uses: step-security/assign-author@1146ede7c932d762607fbafb1981e3055d880c38 # main
